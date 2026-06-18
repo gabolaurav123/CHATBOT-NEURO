@@ -1,4 +1,6 @@
 const { query } = require('../config/db');
+const { isUuid } = require('../utils/validators');
+const { decorateLeadContact } = require('./leadService');
 
 async function createFollowUp({ leadId, phone, type, scheduledAt, message }) {
   const result = await query(
@@ -19,13 +21,54 @@ async function createFollowUps(items) {
   return created;
 }
 
-async function listFollowUps({ limit = 100, offset = 0, status } = {}) {
+function decorateFollowUp(row) {
+  if (!row) return null;
+  const decoratedLead = decorateLeadContact({
+    id: row.lead_id,
+    phone: row.lead_phone || row.phone,
+    whatsapp_id: row.whatsapp_id,
+    whatsapp_lid: row.whatsapp_lid,
+    display_phone: row.display_phone,
+    name: row.name,
+    email: row.email
+  });
+
+  return {
+    ...row,
+    display_contact: decoratedLead && decoratedLead.display_contact,
+    phone_is_real: decoratedLead && decoratedLead.phone_is_real
+  };
+}
+
+async function listFollowUps({ limit = 100, offset = 0, status, search, q } = {}) {
   const params = [];
   const clauses = [];
+  const searchText = search || q;
 
   if (status) {
     params.push(status);
     clauses.push(`f.status = $${params.length}`);
+  }
+
+  if (searchText) {
+    if (isUuid(searchText)) {
+      params.push(searchText);
+      clauses.push(`f.lead_id = $${params.length}`);
+    } else {
+      params.push(`%${searchText}%`);
+      clauses.push(`(
+        f.phone ILIKE $${params.length}
+        OR f.type ILIKE $${params.length}
+        OR f.message ILIKE $${params.length}
+        OR l.phone ILIKE $${params.length}
+        OR l.name ILIKE $${params.length}
+        OR l.email ILIKE $${params.length}
+        OR l.username ILIKE $${params.length}
+        OR l.whatsapp_id ILIKE $${params.length}
+        OR l.whatsapp_lid ILIKE $${params.length}
+        OR l.display_phone ILIKE $${params.length}
+      )`);
+    }
   }
 
   params.push(Math.min(Number(limit) || 100, 500));
@@ -35,7 +78,16 @@ async function listFollowUps({ limit = 100, offset = 0, status } = {}) {
 
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   const result = await query(
-    `SELECT f.*, l.name, l.email, l.bot_paused, l.human_takeover
+    `SELECT f.*,
+            l.phone AS lead_phone,
+            l.whatsapp_id,
+            l.whatsapp_lid,
+            l.display_phone,
+            l.name,
+            l.email,
+            l.username,
+            l.bot_paused,
+            l.human_takeover
      FROM followups f
      LEFT JOIN leads l ON l.id = f.lead_id
      ${where}
@@ -44,12 +96,21 @@ async function listFollowUps({ limit = 100, offset = 0, status } = {}) {
     params
   );
 
-  return result.rows;
+  return result.rows.map(decorateFollowUp);
 }
 
 async function listDueFollowUps() {
   const result = await query(
-    `SELECT f.*, l.name, l.email, l.bot_paused, l.human_takeover
+    `SELECT f.*,
+            l.phone AS lead_phone,
+            l.whatsapp_id,
+            l.whatsapp_lid,
+            l.display_phone,
+            l.name,
+            l.email,
+            l.username,
+            l.bot_paused,
+            l.human_takeover
      FROM followups f
      LEFT JOIN leads l ON l.id = f.lead_id
      WHERE f.status = 'pending'
@@ -60,10 +121,12 @@ async function listDueFollowUps() {
      LIMIT 50`
   );
 
-  return result.rows;
+  return result.rows.map(decorateFollowUp);
 }
 
 async function getFollowUpById(id) {
+  if (!isUuid(id)) return null;
+
   const result = await query('SELECT * FROM followups WHERE id = $1', [id]);
   return result.rows[0] || null;
 }

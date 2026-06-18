@@ -7,11 +7,31 @@ const followupService = require('../services/followupService');
 const settingsService = require('../services/settingsService');
 const whatsappService = require('../services/whatsappService');
 const { logAdminAction } = require('../services/crmService');
-const { parseUuidParam, textMessageSchema } = require('../utils/validators');
+const { isUuid, textMessageSchema } = require('../utils/validators');
 const { hotmartMessage } = require('../bot/flows');
 const { buildPaymentFollowUps } = require('../bot/followUps');
 
 const router = express.Router();
+
+function parseLeadId(req) {
+  const id = req.params.id;
+  if (!isUuid(id)) {
+    const error = new Error('Invalid lead id');
+    error.statusCode = 400;
+    throw error;
+  }
+  return id;
+}
+
+function getRecipientOrThrow(lead) {
+  const recipient = leadService.getLeadRecipient(lead);
+  if (!recipient) {
+    const error = new Error('Lead does not have a valid WhatsApp recipient');
+    error.statusCode = 400;
+    throw error;
+  }
+  return recipient;
+}
 
 async function getLeadOr404(id) {
   const lead = await leadService.getLeadById(id);
@@ -49,7 +69,7 @@ router.get('/', async (req, res, next) => {
 
 router.get('/:id', async (req, res, next) => {
   try {
-    const id = parseUuidParam(req);
+    const id = parseLeadId(req);
     res.json(await getLeadOr404(id));
   } catch (error) {
     next(error);
@@ -58,7 +78,7 @@ router.get('/:id', async (req, res, next) => {
 
 router.patch('/:id', async (req, res, next) => {
   try {
-    const id = parseUuidParam(req);
+    const id = parseLeadId(req);
     const lead = await leadService.updateLead(id, req.body || {});
     await leadService.refreshLeadScore(id);
     await logAdminAction({ leadId: id, action: 'lead_updated', details: req.body || {} });
@@ -70,7 +90,7 @@ router.patch('/:id', async (req, res, next) => {
 
 router.post('/:id/pause-bot', async (req, res, next) => {
   try {
-    const id = parseUuidParam(req);
+    const id = parseLeadId(req);
     const lead = await leadService.updateLead(id, { bot_paused: true });
     await logAdminAction({ leadId: id, action: 'bot_paused' });
     res.json(lead);
@@ -81,7 +101,7 @@ router.post('/:id/pause-bot', async (req, res, next) => {
 
 router.post('/:id/resume-bot', async (req, res, next) => {
   try {
-    const id = parseUuidParam(req);
+    const id = parseLeadId(req);
     const lead = await leadService.updateLead(id, { bot_paused: false });
     await logAdminAction({ leadId: id, action: 'bot_resumed' });
     res.json(lead);
@@ -92,7 +112,7 @@ router.post('/:id/resume-bot', async (req, res, next) => {
 
 router.post('/:id/takeover', async (req, res, next) => {
   try {
-    const id = parseUuidParam(req);
+    const id = parseLeadId(req);
     const lead = await leadService.updateLead(id, { human_takeover: true });
     await logAdminAction({ leadId: id, action: 'human_takeover' });
     res.json(lead);
@@ -103,7 +123,7 @@ router.post('/:id/takeover', async (req, res, next) => {
 
 router.post('/:id/release-takeover', async (req, res, next) => {
   try {
-    const id = parseUuidParam(req);
+    const id = parseLeadId(req);
     const lead = await leadService.updateLead(id, { human_takeover: false });
     await logAdminAction({ leadId: id, action: 'human_takeover_released' });
     res.json(lead);
@@ -114,13 +134,14 @@ router.post('/:id/release-takeover', async (req, res, next) => {
 
 router.post('/:id/send-message', async (req, res, next) => {
   try {
-    const id = parseUuidParam(req);
+    const id = parseLeadId(req);
     const parsed = textMessageSchema.parse(req.body || {});
     const lead = await getLeadOr404(id);
+    const recipient = getRecipientOrThrow(lead);
 
-    await whatsappService.sendMessage(lead.phone, parsed.message);
-    await storeManualOutbound(lead, parsed.message);
-    await logAdminAction({ leadId: id, action: 'manual_message_sent', details: { message: parsed.message } });
+    await whatsappService.sendMessage(recipient, parsed.message);
+    await storeManualOutbound(lead, parsed.message, { recipient });
+    await logAdminAction({ leadId: id, action: 'manual_message_sent', details: { message: parsed.message, recipient } });
 
     res.json({ sent: true });
   } catch (error) {
@@ -130,13 +151,14 @@ router.post('/:id/send-message', async (req, res, next) => {
 
 router.post('/:id/send-hotmart-link', async (req, res, next) => {
   try {
-    const id = parseUuidParam(req);
+    const id = parseLeadId(req);
     let lead = await getLeadOr404(id);
     const settings = await settingsService.getRuntimeSettings();
     const message = hotmartMessage(lead, settings.hotmart_link);
+    const recipient = getRecipientOrThrow(lead);
 
-    await whatsappService.sendMessage(lead.phone, message);
-    await storeManualOutbound(lead, message, { hotmart: true });
+    await whatsappService.sendMessage(recipient, message);
+    await storeManualOutbound(lead, message, { hotmart: true, recipient });
 
     lead = await leadService.updateLead(id, {
       hotmart_link_sent: true,
@@ -173,7 +195,7 @@ router.post('/:id/send-hotmart-link', async (req, res, next) => {
 
 router.post('/:id/mark-paid', async (req, res, next) => {
   try {
-    const id = parseUuidParam(req);
+    const id = parseLeadId(req);
     const payment = await paymentService.markLeadPaid(id);
     const lead = await leadService.getLeadById(id);
     await logAdminAction({ leadId: id, action: 'payment_marked_paid' });
@@ -185,7 +207,7 @@ router.post('/:id/mark-paid', async (req, res, next) => {
 
 router.post('/:id/delete-memory', async (req, res, next) => {
   try {
-    const id = parseUuidParam(req);
+    const id = parseLeadId(req);
     await memoryService.deleteMemoryByLeadId(id);
     const lead = await leadService.updateLead(id, {
       consent_24h: false,

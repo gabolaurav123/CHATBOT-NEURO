@@ -44,14 +44,21 @@ router.post('/:id/send-now', async (req, res, next) => {
       throw error;
     }
 
-    await whatsappService.sendMessage(lead.phone, followUp.message);
+    const recipient = leadService.getLeadRecipient(lead);
+    if (!recipient) {
+      const error = new Error('Lead does not have a valid WhatsApp recipient');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await whatsappService.sendMessage(recipient, followUp.message);
     const conversation = await messageService.getOrCreateActiveConversation(lead);
     await messageService.storeMessage({
       leadId: lead.id,
       conversationId: conversation.id,
       direction: 'outbound',
       body: followUp.message,
-      rawPayload: { followUpId: id, manual: true }
+      rawPayload: { followUpId: id, manual: true, recipient }
     });
     await leadService.updateLastBotMessage(lead.id, followUp.message);
     await followupService.markFollowUpSent(id);

@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS leads (
   channel TEXT DEFAULT 'whatsapp',
   phone TEXT UNIQUE NOT NULL,
   whatsapp_id TEXT,
+  whatsapp_lid TEXT,
+  display_phone TEXT,
   name TEXT,
   email TEXT,
   username TEXT,
@@ -33,6 +35,9 @@ CREATE TABLE IF NOT EXISTS leads (
   last_bot_message TEXT,
   notes TEXT
 );
+
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS whatsapp_lid TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS display_phone TEXT;
 
 CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -127,6 +132,9 @@ CREATE TABLE IF NOT EXISTS admin_actions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_leads_phone ON leads(phone);
+CREATE INDEX IF NOT EXISTS idx_leads_whatsapp_id ON leads(whatsapp_id);
+CREATE INDEX IF NOT EXISTS idx_leads_whatsapp_lid ON leads(whatsapp_lid);
+CREATE INDEX IF NOT EXISTS idx_leads_display_phone ON leads(display_phone);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(lead_status);
 CREATE INDEX IF NOT EXISTS idx_leads_funnel_stage ON leads(funnel_stage);
 CREATE INDEX IF NOT EXISTS idx_conversations_lead_id ON conversations(lead_id);

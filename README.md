@@ -160,6 +160,17 @@ Content-Type: application/json
 
 Este endpoint envia el mensaje directamente con Baileys al JID indicado y sirve para validar que `sendMessage` funciona.
 
+### Notas Para El CRM
+
+- `GET /api/leads` y endpoints relacionados devuelven `display_contact` y `phone_is_real`.
+- Para mostrar contacto usa esta prioridad: `phone` solo si `phone_is_real = true`; luego `display_phone`; luego `whatsapp_lid` o `whatsapp_id`.
+- Si `whatsapp_id` o `whatsapp_lid` termina en `@lid`, muestralo como `ID WhatsApp: ...` y no lo formatees como telefono.
+- No uses `parseInt` para telefonos, JIDs ni IDs. Todos deben tratarse como `string`.
+- `GET /api/leads/:id`, `GET /api/conversations/:leadId` y `GET /api/messages/:leadId` requieren UUID real. Si no es UUID, el backend responde `400 { "error": "Invalid lead id" }`.
+- Para busqueda textual de conversaciones usa `GET /api/conversations?search=texto`; el backend no compara `uuid = text`.
+- Para editar follow-ups usa `PATCH /api/followups/:id` con `message`, `scheduled_at`, `type` y `status`.
+- Para enviar un follow-up ahora usa `POST /api/followups/:id/send-now`; el backend solo marca `sent` despues de que Baileys confirma el envio.
+
 ## Base De Datos
 
 Al iniciar, el servidor ejecuta `src/database/migrations/schema.sql` con `CREATE TABLE IF NOT EXISTS` y crea:

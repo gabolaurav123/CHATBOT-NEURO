@@ -1,5 +1,7 @@
 const { query } = require('../config/db');
 const { env } = require('../config/env');
+const { isUuid } = require('../utils/validators');
+const { decorateLeadContact } = require('./leadService');
 
 async function getOrCreateActiveConversation(lead) {
   const existing = await query(
@@ -65,6 +67,8 @@ async function storeMessage({ leadId, conversationId, direction, body, rawPayloa
 }
 
 async function getConversationHistory(leadId, limit = 12) {
+  if (!isUuid(leadId)) return [];
+
   const result = await query(
     `SELECT direction, body, created_at
      FROM messages
@@ -78,6 +82,8 @@ async function getConversationHistory(leadId, limit = 12) {
 }
 
 async function getMessagesByLead(leadId, limit = 200, offset = 0) {
+  if (!isUuid(leadId)) return [];
+
   const result = await query(
     `SELECT *
      FROM messages
@@ -90,20 +96,82 @@ async function getMessagesByLead(leadId, limit = 200, offset = 0) {
   return result.rows;
 }
 
-async function listConversations({ limit = 100, offset = 0 } = {}) {
+function decorateConversation(row) {
+  if (!row) return null;
+  const decoratedLead = decorateLeadContact({
+    id: row.lead_id,
+    phone: row.lead_phone || row.phone,
+    whatsapp_id: row.whatsapp_id,
+    whatsapp_lid: row.whatsapp_lid,
+    display_phone: row.display_phone,
+    name: row.name,
+    email: row.email
+  });
+
+  return {
+    ...row,
+    display_contact: decoratedLead && decoratedLead.display_contact,
+    phone_is_real: decoratedLead && decoratedLead.phone_is_real
+  };
+}
+
+async function listConversations({ limit = 100, offset = 0, search, q } = {}) {
+  const params = [];
+  const clauses = [];
+  const searchText = search || q;
+
+  if (searchText) {
+    if (isUuid(searchText)) {
+      params.push(searchText);
+      clauses.push(`c.lead_id = $${params.length}`);
+    } else {
+      params.push(`%${searchText}%`);
+      clauses.push(`(
+        c.phone ILIKE $${params.length}
+        OR l.phone ILIKE $${params.length}
+        OR l.name ILIKE $${params.length}
+        OR l.email ILIKE $${params.length}
+        OR l.username ILIKE $${params.length}
+        OR l.whatsapp_id ILIKE $${params.length}
+        OR l.whatsapp_lid ILIKE $${params.length}
+        OR l.display_phone ILIKE $${params.length}
+      )`);
+    }
+  }
+
+  params.push(Math.min(Number(limit) || 100, 500));
+  const limitIndex = params.length;
+  params.push(Number(offset) || 0);
+  const offsetIndex = params.length;
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
   const result = await query(
-    `SELECT c.*, l.name, l.email, l.lead_status, l.funnel_stage, l.human_takeover, l.bot_paused
+    `SELECT c.*,
+            l.phone AS lead_phone,
+            l.whatsapp_id,
+            l.whatsapp_lid,
+            l.display_phone,
+            l.name,
+            l.email,
+            l.username,
+            l.lead_status,
+            l.funnel_stage,
+            l.human_takeover,
+            l.bot_paused
      FROM conversations c
      LEFT JOIN leads l ON l.id = c.lead_id
+     ${where}
      ORDER BY COALESCE(c.last_message_at, c.started_at) DESC
-     LIMIT $1 OFFSET $2`,
-    [Math.min(Number(limit) || 100, 500), Number(offset) || 0]
+     LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+    params
   );
 
-  return result.rows;
+  return result.rows.map(decorateConversation);
 }
 
 async function getConversationsByLead(leadId) {
+  if (!isUuid(leadId)) return [];
+
   const result = await query(
     `SELECT *
      FROM conversations

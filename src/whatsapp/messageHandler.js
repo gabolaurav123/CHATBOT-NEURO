@@ -64,7 +64,7 @@ async function handleIncomingMessage(message) {
   if (!message || !message.key || fromMe) return;
   if (!remoteJid || remoteJid.endsWith('@g.us')) return;
 
-  const phone = normalizePhone(remoteJid);
+  const phone = normalizePhone(remoteJid) || remoteJid;
 
   if (!phone || !body) return;
 
