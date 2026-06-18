@@ -5,9 +5,10 @@ const settingsService = require('../services/settingsService');
 const paymentService = require('../services/paymentService');
 const followupService = require('../services/followupService');
 const { classifyUserMessage } = require('../ai/intentClassifier');
-const { generateHumanReply } = require('../ai/responseGenerator');
+const { generateHumanReply, generatePostLinkReply } = require('../ai/responseGenerator');
 const { generateBotReply } = require('../ai/geminiClient');
 const { extractEmail } = require('../utils/validators');
+const { normalizeUserProvidedPhone } = require('../utils/normalizePhone');
 const { addHours } = require('../utils/date');
 const { env } = require('../config/env');
 const {
@@ -16,7 +17,7 @@ const {
   detectPain,
   detectPurchaseIntent,
   detectPriceIntent,
-  detectVideoSeen,
+  detectPaymentReported,
   detectUrgency
 } = require('./intentDetector');
 const { detectObjection } = require('./objectionDetector');
@@ -32,7 +33,7 @@ const {
   askEmail,
   askEmailAgain,
   askUsername,
-  landingMessage,
+  askPhone,
   offerMessage,
   hotmartMessage,
   objectionReplies,
@@ -40,9 +41,11 @@ const {
   deleteMemoryMessage,
   stopMessage,
   humanTakeoverMessage,
-  fallbackMessage
+  fallbackMessage,
+  postLinkFallback,
+  paymentReportedMessage
 } = require('./flows');
-const { buildLandingFollowUp, buildPaymentFollowUps } = require('./followUps');
+const { buildPaymentFollowUps } = require('./followUps');
 
 function memoryObject(memoryRow) {
   return memoryRow && memoryRow.memory ? memoryRow.memory : {};
@@ -107,34 +110,9 @@ function result({ lead, conversation, reply }) {
   return {
     leadId: lead.id,
     conversationId: conversation.id,
+    whatsappId: lead.whatsapp_id,
     reply
   };
-}
-
-async function sendLanding({ lead, conversation, settings }) {
-  const updatedLead = await updateLeadAndMemory({
-    lead,
-    conversation,
-    leadFields: {
-      funnel_stage: 'landing_enviada'
-    },
-    memoryPatch: {
-      current_step: 'landing_sent',
-      stage: 'landing_enviada'
-    },
-    currentStep: 'landing_sent'
-  });
-
-  const followUp = buildLandingFollowUp(updatedLead);
-  await followupService.createFollowUp({
-    leadId: updatedLead.id,
-    phone: updatedLead.phone,
-    type: followUp.type,
-    scheduledAt: followUp.scheduledAt,
-    message: followUp.message
-  });
-
-  return landingMessage(updatedLead, settings.landing_link);
 }
 
 async function sendOffer({ lead, conversation, settings }) {
@@ -151,11 +129,11 @@ async function sendOffer({ lead, conversation, settings }) {
     currentStep: 'offer_presented'
   });
 
-  return offerMessage(settings);
+  return offerMessage(settings, lead);
 }
 
 async function sendHotmart({ lead, conversation, settings }) {
-  const hotmartLink = settings.hotmart_link || env.HOTMART_LINK;
+  const hotmartLink = settings.hotmart_link || env.HOTMART_LINK || 'https://pay.hotmart.com/T103515864E';
 
   const updatedLead = await updateLeadAndMemory({
     lead,
@@ -187,6 +165,7 @@ async function sendHotmart({ lead, conversation, settings }) {
       followUps.map((item) => ({
         leadId: updatedLead.id,
         phone: updatedLead.phone,
+        whatsappId: updatedLead.whatsapp_id,
         type: item.type,
         scheduledAt: item.scheduledAt,
         message: item.message
@@ -195,6 +174,145 @@ async function sendHotmart({ lead, conversation, settings }) {
   }
 
   return hotmartMessage(updatedLead, hotmartLink);
+}
+
+function wantsProgramDetails(message) {
+  return /(qu[eé] incluye|expl[ií]came|que tiene|qué tiene|m[aá]s info|como funciona|c[oó]mo funciona)/i.test(message || '');
+}
+
+function wantsPaymentHelp(message) {
+  return /(c[oó]mo pago|d[oó]nde pago|pasame el link|p[aá]same el link|link otra vez|no encuentro el link|inscripci[oó]n|inscripcion|precio|link)/i.test(message || '');
+}
+
+async function handlePostLinkConversation({ lead, conversation, memory, history, body, settings }) {
+  const hotmartLink = settings.hotmart_link || env.HOTMART_LINK || 'https://pay.hotmart.com/T103515864E';
+  const name = lead.name ? `, ${lead.name}` : '';
+
+  if (detectPaymentReported(body)) {
+    await updateLeadAndMemory({
+      lead,
+      conversation,
+      leadFields: {
+        payment_status: 'reportado',
+        funnel_stage: 'pago_reportado'
+      },
+      memoryPatch: {
+        current_step: 'payment_reported',
+        stage: 'pago_reportado'
+      },
+      currentStep: 'payment_reported'
+    });
+    await paymentService.reportPaymentByUser({
+      leadId: lead.id,
+      phone: lead.phone,
+      paymentLink: hotmartLink,
+      amount: settings.product_price || env.PRODUCT_PRICE,
+      metadata: { source: 'bot_post_link' }
+    });
+    return paymentReportedMessage(lead);
+  }
+
+  await updateLeadAndMemory({
+    lead,
+    conversation,
+    leadFields: {
+      funnel_stage: 'post_link_conversacion'
+    },
+    memoryPatch: {
+      current_step: 'post_link_conversation',
+      stage: 'post_link_conversacion'
+    },
+    currentStep: 'post_link_conversation'
+  });
+
+  const objection = detectObjection(body);
+  if (objection === 'precio') {
+    return `Te entiendo${name}.
+
+Y es válido mirarlo con cuidado.
+
+Más que verlo solo como un pago, míralo como una decisión sobre algo que lleva tiempo afectándote.
+
+Si esto sigue igual 3, 6 o 12 meses más, también tiene un costo emocional.
+
+La pregunta no es solo cuánto cuesta entrar.
+
+También es cuánto te está costando seguir cargando con lo mismo.
+
+Si quieres avanzar, aquí tienes nuevamente el acceso oficial:
+
+${hotmartLink}`;
+  }
+
+  if (objection === 'tiempo') {
+    return `Te entiendo.
+
+Justamente muchas personas llegan sintiendo que no tienen tiempo ni energía.
+
+Neurotraumas™ está pensado para avanzar paso a paso, no para saturarte.
+
+La idea no es exigirte más, sino darte estructura y herramientas para empezar a entender lo que te pasa.
+
+¿Tu preocupación es más por horarios, constancia o energía emocional?`;
+  }
+
+  if (objection === 'confianza') {
+    return `Es normal tener dudas.
+
+Nadie debería tomar una decisión importante solo por impulso.
+
+Lo que sí puedo decirte es que Neurotraumas™ no se basa en prometer resultados mágicos.
+
+Se basa en ayudarte a comprender tus patrones, trabajar con herramientas prácticas y acompañarte durante 12 semanas.
+
+No se trata de cambiar de la noche a la mañana.
+
+Se trata de empezar a dejar de repetir lo mismo sin entender por qué.
+
+Si quieres, te puedo explicar qué incluye exactamente antes de que tomes la decisión.`;
+  }
+
+  if (objection === 'indecision') {
+    return `Claro${name}, piénsalo con calma.
+
+Solo te dejo una pregunta para que lo mires con honestidad:
+
+¿Lo quieres pensar porque necesitas revisar algo concreto, o porque una parte de ti tiene miedo de empezar?
+
+Si quieres, puedo ayudarte a resolver esa duda puntual.`;
+  }
+
+  if (wantsProgramDetails(body)) {
+    return `Claro.
+
+Neurotraumas™ incluye un entrenamiento de 12 semanas donde trabajarás comprensión del sistema nervioso, identificación de patrones automáticos, ansiedad, autosabotaje, bloqueos internos y herramientas prácticas para regularte mejor.
+
+Además tendrás ejercicios aplicados, acompañamiento y comunidad.
+
+La idea es que no solo entiendas lo que te pasa, sino que tengas una estructura para empezar a trabajarlo.
+
+Si sientes que esto conecta con lo que estás viviendo, puedes inscribirte aquí:
+
+${hotmartLink}`;
+  }
+
+  if (wantsPaymentHelp(body) || detectPurchaseIntent(body)) {
+    return `Claro${name}.
+
+Te dejo nuevamente el acceso oficial de inscripción:
+
+${hotmartLink}
+
+Cuando completes el pago, guarda la confirmación de Hotmart y avísame por aquí para ayudarte con los siguientes pasos.`;
+  }
+
+  return generatePostLinkReply({
+    lead,
+    memory,
+    history,
+    userMessage: body,
+    settings
+  }).catch(() => postLinkFallback(lead, hotmartLink));
 }
 
 async function handleSpecialCases({ lead, conversation, classification }) {
@@ -357,7 +475,8 @@ async function handleCurrentStep({ lead, conversation, memory, classification, b
       conversation,
       leadFields: {
         urgency,
-        lead_status: leadStatus
+        lead_status: leadStatus,
+        funnel_stage: 'datos_solicitados'
       },
       memoryPatch: {
         current_step: nextStep,
@@ -415,6 +534,7 @@ async function handleCurrentStep({ lead, conversation, memory, classification, b
 
   if (currentStep === 'ask_username') {
     const username = classification.username || cleanUsername(body);
+    const nextStep = lead.phone ? 'offer_presented' : 'ask_phone';
     const updatedLead = await updateLeadAndMemory({
       lead,
       conversation,
@@ -422,13 +542,40 @@ async function handleCurrentStep({ lead, conversation, memory, classification, b
         username
       },
       memoryPatch: {
-        current_step: 'ready_for_landing',
+        current_step: nextStep,
         username
       },
-      currentStep: 'ready_for_landing'
+      currentStep: nextStep
     });
 
-    return sendLanding({ lead: updatedLead, conversation, settings });
+    if (!updatedLead.phone) {
+      return askPhone();
+    }
+
+    return sendOffer({ lead: updatedLead, conversation, settings });
+  }
+
+  if (currentStep === 'ask_phone') {
+    const phone = normalizeUserProvidedPhone(body);
+    if (!phone) {
+      return 'Para guardarlo bien, envíame tu número de WhatsApp con código de país. Ejemplo: +59171234567';
+    }
+
+    const updatedLead = await updateLeadAndMemory({
+      lead,
+      conversation,
+      leadFields: {
+        phone,
+        display_phone: phone
+      },
+      memoryPatch: {
+        current_step: 'offer_presented',
+        phone
+      },
+      currentStep: 'offer_presented'
+    });
+
+    return sendOffer({ lead: updatedLead, conversation, settings });
   }
 
   return null;
@@ -454,14 +601,21 @@ async function applyGeminiFields({ lead, conversation, aiReply }) {
   }
 }
 
-async function handleIncomingMessage({ whatsappId, phone, body, rawPayload }) {
+async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPayload }) {
   const sourceKeyword = detectInitialKeyword(body);
-  let lead = await leadService.upsertLeadByPhone({ phone, whatsappId, sourceKeyword });
+  const leadIdentity = identity || {
+    phone,
+    whatsapp_id: whatsappId,
+    whatsapp_lid: String(whatsappId || '').endsWith('@lid') ? whatsappId : null,
+    display_phone: phone || whatsappId
+  };
+  let lead = await leadService.upsertLeadByWhatsAppIdentity({ identity: leadIdentity, sourceKeyword });
   const conversation = await messageService.getOrCreateActiveConversation(lead);
 
   await messageService.storeMessage({
     leadId: lead.id,
     conversationId: conversation.id,
+    whatsappId: lead.whatsapp_id,
     direction: 'inbound',
     body,
     rawPayload
@@ -469,6 +623,14 @@ async function handleIncomingMessage({ whatsappId, phone, body, rawPayload }) {
 
   await leadService.updateLastUserMessage(lead.id, body);
   lead = await leadService.getLeadById(lead.id);
+
+  const userProvidedPhone = normalizeUserProvidedPhone(body);
+  if (!lead.phone && userProvidedPhone) {
+    lead = await leadService.updateLead(lead.id, {
+      phone: userProvidedPhone,
+      display_phone: userProvidedPhone
+    });
+  }
 
   console.log('Bot control state', {
     bot_paused: lead.bot_paused,
@@ -483,6 +645,7 @@ async function handleIncomingMessage({ whatsappId, phone, body, rawPayload }) {
   const memory = memoryObject(memoryRow);
   const history = await messageService.getConversationHistory(lead.id);
   const settings = await settingsService.getRuntimeSettings();
+  const isPostLink = lead.hotmart_link_sent && lead.payment_status === 'pendiente';
 
   if (sourceKeyword && lead.funnel_stage === 'inicio') {
     await updateLeadAndMemory({
@@ -517,7 +680,12 @@ async function handleIncomingMessage({ whatsappId, phone, body, rawPayload }) {
     return result({ lead, conversation, reply: specialReply });
   }
 
-  if (classification.wantsPaymentLink || detectPurchaseIntent(body)) {
+  if (isPostLink) {
+    const reply = await handlePostLinkConversation({ lead, conversation, memory, history, body, settings });
+    return result({ lead: await leadService.getLeadById(lead.id), conversation, reply });
+  }
+
+  if (classification.wantsPaymentLink || detectPurchaseIntent(body) || detectPriceIntent(body)) {
     const reply = await sendHotmart({ lead, conversation, settings });
     return result({ lead, conversation, reply });
   }
@@ -544,14 +712,7 @@ async function handleIncomingMessage({ whatsappId, phone, body, rawPayload }) {
     return result({ lead, conversation, reply: stepReply });
   }
 
-  const videoSeen = detectVideoSeen(body);
-  if (videoSeen) {
-    await leadService.updateLead(lead.id, {
-      notes: `${lead.notes || ''}\n${new Date().toISOString()} vio_video`.trim()
-    });
-  }
-
-  if (detectPriceIntent(body) || videoSeen || lead.lead_status === 'caliente') {
+  if (lead.lead_status === 'caliente' && !['oferta_presentada', 'link_pago_enviado', 'post_link_conversacion', 'pago_reportado', 'onboarding'].includes(lead.funnel_stage)) {
     const reply = await sendOffer({ lead, conversation, settings });
     return result({ lead, conversation, reply });
   }

@@ -96,9 +96,40 @@ async function markLeadPaid(leadId) {
   return payment.rows[0] || null;
 }
 
+async function reportPaymentByUser({ leadId, phone, paymentLink, amount, metadata = {} }) {
+  const updated = await query(
+    `UPDATE payments
+     SET status = 'reported',
+         reported_by_user = TRUE,
+         payment_link = COALESCE(payment_link, $2),
+         metadata = COALESCE(metadata, '{}'::jsonb) || $3::jsonb
+     WHERE lead_id = $1
+       AND status IN ('pending', 'reported')
+     RETURNING *`,
+    [leadId, paymentLink || null, JSON.stringify(metadata)]
+  );
+
+  if (updated.rows[0]) return updated.rows[0];
+
+  return createPayment({
+    leadId,
+    phone,
+    paymentLink,
+    amount,
+    metadata: {
+      ...metadata,
+      reported_by_user: true
+    }
+  }).then((payment) => updatePayment(payment.id, {
+    status: 'reported',
+    reported_by_user: true
+  }));
+}
+
 module.exports = {
   createPayment,
   listPayments,
   updatePayment,
-  markLeadPaid
+  markLeadPaid,
+  reportPaymentByUser
 };

@@ -26,7 +26,7 @@ function parseLeadId(req) {
 function getRecipientOrThrow(lead) {
   const recipient = leadService.getLeadRecipient(lead);
   if (!recipient) {
-    const error = new Error('Lead does not have a valid WhatsApp recipient');
+    const error = new Error('No whatsapp_id available for this lead');
     error.statusCode = 400;
     throw error;
   }
@@ -48,6 +48,7 @@ async function storeManualOutbound(lead, message, rawPayload = {}) {
   await messageService.storeMessage({
     leadId: lead.id,
     conversationId: conversation.id,
+    whatsappId: lead.whatsapp_id || rawPayload.recipient || null,
     direction: 'outbound',
     body: message,
     rawPayload: {
@@ -136,12 +137,13 @@ router.post('/:id/send-message', async (req, res, next) => {
   try {
     const id = parseLeadId(req);
     const parsed = textMessageSchema.parse(req.body || {});
+    const text = parsed.text || parsed.message;
     const lead = await getLeadOr404(id);
     const recipient = getRecipientOrThrow(lead);
 
-    await whatsappService.sendMessage(recipient, parsed.message);
-    await storeManualOutbound(lead, parsed.message, { recipient });
-    await logAdminAction({ leadId: id, action: 'manual_message_sent', details: { message: parsed.message, recipient } });
+    await whatsappService.sendMessage(recipient, text);
+    await storeManualOutbound(lead, text, { recipient });
+    await logAdminAction({ leadId: id, action: 'manual_message_sent', details: { message: text, recipient } });
 
     res.json({ sent: true });
   } catch (error) {
@@ -154,7 +156,8 @@ router.post('/:id/send-hotmart-link', async (req, res, next) => {
     const id = parseLeadId(req);
     let lead = await getLeadOr404(id);
     const settings = await settingsService.getRuntimeSettings();
-    const message = hotmartMessage(lead, settings.hotmart_link);
+    const hotmartLink = settings.hotmart_link || 'https://pay.hotmart.com/T103515864E';
+    const message = hotmartMessage(lead, hotmartLink);
     const recipient = getRecipientOrThrow(lead);
 
     await whatsappService.sendMessage(recipient, message);
@@ -170,16 +173,17 @@ router.post('/:id/send-hotmart-link', async (req, res, next) => {
     await paymentService.createPayment({
       leadId: lead.id,
       phone: lead.phone,
-      paymentLink: settings.hotmart_link,
+      paymentLink: hotmartLink,
       amount: settings.product_price,
       metadata: { source: 'crm' }
     });
 
-    const followUps = buildPaymentFollowUps(lead, settings.hotmart_link);
+    const followUps = buildPaymentFollowUps(lead, hotmartLink);
     await followupService.createFollowUps(
       followUps.map((item) => ({
         leadId: lead.id,
         phone: lead.phone,
+        whatsappId: lead.whatsapp_id,
         type: item.type,
         scheduledAt: item.scheduledAt,
         message: item.message

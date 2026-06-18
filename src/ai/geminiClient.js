@@ -120,7 +120,7 @@ async function generateBotReply({
   "reply": "mensaje que se enviará por WhatsApp",
   "detectedIntent": "info | ansiedad | autosabotaje | precio | compra | objecion | crisis | borrar | humano | otro",
   "detectedObjection": "precio | tiempo | confianza | indecision | ninguna",
-  "nextStage": "captacion | diagnostico | landing_enviada | oferta_presentada | link_pago_enviado | onboarding",
+  "nextStage": "captacion | diagnostico | datos_solicitados | oferta_presentada | link_pago_enviado | post_link_conversacion | pago_reportado | onboarding",
   "fieldsToUpdate": {
     "name": null,
     "email": null,
@@ -138,8 +138,8 @@ async function generateBotReply({
 Reglas:
 - Producto: ${settings.product_name || 'Neurotraumas™'}.
 - Precio: USD $${settings.product_price || 360}.
-- Link Hotmart disponible: ${settings.hotmart_link || 'no configurado'}.
-- Link landing disponible: ${settings.landing_link || 'no configurado'}.
+- Link Hotmart disponible: ${settings.hotmart_link || 'https://pay.hotmart.com/T103515864E'}.
+- No menciones páginas externas de preparación ni materiales previos de preventa.
 - No prometas curas, no diagnostiques, no inventes descuentos ni cupos.
 - Una sola pregunta por respuesta.
 - Si hay crisis o autolesión, deja de vender.

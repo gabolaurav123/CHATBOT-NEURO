@@ -8,7 +8,7 @@ Gracias por escribirme.
 
 Vi tu interés en Neurotraumas™.
 
-Antes de enviarte información, quiero entender algo importante para poder orientarte mejor.
+Antes de pasarte el acceso, quiero entender algo importante para orientarte mejor.
 
 Para darte una atención más personalizada, voy a recordar esta conversación durante las próximas 24 horas. Después de ese tiempo, el historial se elimina automáticamente y solo quedará un registro básico de seguimiento.
 
@@ -21,14 +21,11 @@ Dime, ¿qué sientes que hoy te está afectando más?
 3️⃣ Pensamientos repetitivos
 4️⃣ Relaciones difíciles
 5️⃣ Me siento bloqueado(a)
-6️⃣ Solo quiero información`;
+6️⃣ Solo quiero información del programa`;
 }
 
 function greetingMessage() {
-  return `Hola 👋
-Gracias por escribirme.
-
-Para orientarte mejor, dime qué estás buscando sobre Neurotraumas™ o escribe NEURO para recibir la información inicial.`;
+  return firstMessage();
 }
 
 const painReplies = {
@@ -118,14 +115,14 @@ function diagnosticQuestion4() {
 function askName() {
   return `Gracias por responderme con tanta honestidad.
 
-Para enviarte la información correcta y dejar tu orientación registrada, ¿me dices tu nombre?`;
+Para dejar tu orientación registrada, ¿me dices tu nombre?`;
 }
 
 function askEmail(lead) {
   const name = withName(lead);
   return `Perfecto${name ? `, ${name}` : ''}.
 
-¿A qué correo te puedo enviar también la información por si quieres revisarla con calma?`;
+¿A qué correo te puedo enviar la información de acceso por si quieres revisarla con calma?`;
 }
 
 function askEmailAgain() {
@@ -135,30 +132,20 @@ function askEmailAgain() {
 }
 
 function askUsername() {
-  return `Y para ubicarte bien en el registro, ¿cuál es tu usuario de Instagram o la red por donde llegaste?`;
+  return `¿Y por qué red llegaste o cuál es tu usuario? Puede ser Instagram, Facebook, TikTok o WhatsApp.`;
 }
 
-function landingMessage(lead, landingLink) {
+function askPhone() {
+  return `Para dejar tu registro completo y poder darte seguimiento si se corta la conversación, ¿me compartes tu número de WhatsApp?`;
+}
+
+function offerMessage(settings, lead) {
+  const price = settings.product_price || '360';
   const name = withName(lead);
-  const link = landingLink || '[LANDING_LINK]';
 
   return `Gracias${name ? `, ${name}` : ''}.
 
-Por lo que me cuentas, tiene sentido que veas primero esta explicación.
-
-Creamos un video corto donde se explica por qué muchas personas siguen atrapadas en ansiedad, autosabotaje o patrones emocionales repetitivos incluso cuando intentan cambiar.
-
-Míralo con calma aquí:
-
-${link}
-
-Después de verlo, puedo ayudarte a identificar si Neurotraumas™ realmente encaja contigo.`;
-}
-
-function offerMessage(settings) {
-  const price = settings.product_price || '360';
-
-  return `Por lo que me cuentas, Neurotraumas™ podría tener mucho sentido para ti.
+Por lo que me cuentas, Neurotraumas™ podría tener mucho sentido para ti.
 
 Te explico de forma simple:
 
@@ -178,28 +165,26 @@ Dentro del programa trabajarás:
 
 La inversión es de USD $${price}.
 
-También podemos ofrecer facilidades de pago si están disponibles.
-
 Más que venderte algo rápido, quiero que tomes una decisión con claridad.
-
-Por eso te pregunto:
 
 Si dentro de 90 días sigues exactamente igual, ¿cómo te haría sentir?`;
 }
 
 function hotmartMessage(lead, hotmartLink) {
   const name = withName(lead);
-  const link = hotmartLink || '[HOTMART_LINK]';
+  const link = hotmartLink || 'https://pay.hotmart.com/T103515864E';
 
   return `Perfecto${name ? `, ${name}` : ''} 🙌
 
-Te comparto el acceso para asegurar tu cupo en Neurotraumas™:
+Te comparto el acceso oficial para inscribirte en Neurotraumas™:
 
 ${link}
 
-Cuando completes tu inscripción, guarda el comprobante o confirmación de Hotmart.
+Cuando completes tu inscripción, guarda la confirmación de Hotmart.
 
-Después de eso te guiaremos con el acceso y los siguientes pasos.`;
+Después de eso te guiaremos con los siguientes pasos.
+
+Si mientras revisas el enlace te surge alguna duda sobre el programa, el precio o cómo funciona, escríbeme por aquí y te ayudo a resolverlo.`;
 }
 
 const objectionReplies = {
@@ -276,7 +261,7 @@ Gracias por escribirme.
 
 Vi tu interés en Neurotraumas™.
 
-Antes de enviarte información, quiero entender algo importante para poder orientarte mejor.
+Antes de pasarte el acceso, quiero entender algo importante para orientarte mejor.
 
 Dime, ¿qué sientes que hoy te está afectando más?
 
@@ -285,7 +270,29 @@ Dime, ¿qué sientes que hoy te está afectando más?
 3️⃣ Pensamientos repetitivos
 4️⃣ Relaciones difíciles
 5️⃣ Me siento bloqueado(a)
-6️⃣ Solo quiero información`;
+6️⃣ Solo quiero información del programa`;
+}
+
+function postLinkFallback(lead, hotmartLink) {
+  const link = hotmartLink || 'https://pay.hotmart.com/T103515864E';
+  return `Te entiendo.
+
+Solo para no perder el hilo: estábamos viendo tu inscripción a Neurotraumas™ y las dudas que podían frenarte para empezar.
+
+¿Quieres que te ayude a resolver algo específico antes de avanzar con el acceso?
+
+${link}`;
+}
+
+function paymentReportedMessage(lead) {
+  const name = withName(lead);
+  return `Excelente${name ? `, ${name}` : ''} 🙌
+
+Me alegra mucho que hayas tomado la decisión de empezar.
+
+Para ayudarte con el acceso, por favor envíame la confirmación de Hotmart o el correo/comprobante de inscripción.
+
+Luego te guiaremos con los siguientes pasos.`;
 }
 
 module.exports = {
@@ -300,7 +307,7 @@ module.exports = {
   askEmail,
   askEmailAgain,
   askUsername,
-  landingMessage,
+  askPhone,
   offerMessage,
   hotmartMessage,
   objectionReplies,
@@ -308,5 +315,7 @@ module.exports = {
   deleteMemoryMessage,
   stopMessage,
   humanTakeoverMessage,
-  fallbackMessage
+  fallbackMessage,
+  postLinkFallback,
+  paymentReportedMessage
 };

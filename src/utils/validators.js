@@ -2,7 +2,10 @@ const { z } = require('zod');
 
 const uuidSchema = z.string().uuid();
 const textMessageSchema = z.object({
-  message: z.string().min(1).max(4000)
+  message: z.string().min(1).max(4000).optional(),
+  text: z.string().min(1).max(4000).optional()
+}).refine((value) => value.message || value.text, {
+  message: 'message or text is required'
 });
 
 function isUuid(value) {

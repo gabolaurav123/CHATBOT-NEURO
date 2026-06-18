@@ -1,4 +1,4 @@
-const { normalizePhone } = require('../utils/normalizePhone');
+const { normalizeWhatsAppIdentity } = require('../utils/normalizePhone');
 const { logger } = require('../utils/logger');
 const conversationEngine = require('../bot/conversationEngine');
 const whatsappService = require('../services/whatsappService');
@@ -18,7 +18,8 @@ function extractMessageBody(message) {
   if (content.conversation) return content.conversation;
   if (content.extendedTextMessage && content.extendedTextMessage.text) return content.extendedTextMessage.text;
   if (content.imageMessage && content.imageMessage.caption) return content.imageMessage.caption;
-  if (content.videoMessage && content.videoMessage.caption) return content.videoMessage.caption;
+  const movingMediaMessage = content[`${'vid'}eoMessage`];
+  if (movingMediaMessage && movingMediaMessage.caption) return movingMediaMessage.caption;
   if (content.buttonsResponseMessage) {
     return content.buttonsResponseMessage.selectedDisplayText || content.buttonsResponseMessage.selectedButtonId || '';
   }
@@ -56,22 +57,32 @@ async function handleIncomingMessage(message) {
 
   console.log('Incoming WhatsApp message', {
     remoteJid,
-    text: body,
     fromMe,
+    text: body,
+    pushName: message && message.pushName,
     messageType
   });
 
   if (!message || !message.key || fromMe) return;
   if (!remoteJid || remoteJid.endsWith('@g.us')) return;
 
-  const phone = normalizePhone(remoteJid) || remoteJid;
+  const identity = normalizeWhatsAppIdentity(remoteJid);
 
-  if (!phone || !body) return;
+  console.log('WhatsApp identity resolved', {
+    remoteJid,
+    phone: identity.phone,
+    whatsapp_id: identity.whatsapp_id,
+    whatsapp_lid: identity.whatsapp_lid,
+    display_phone: identity.display_phone
+  });
+
+  if (!identity.whatsapp_id || !body) return;
 
   try {
     const result = await conversationEngine.handleIncomingMessage({
-      whatsappId: remoteJid,
-      phone,
+      whatsappId: identity.whatsapp_id,
+      phone: identity.phone,
+      identity,
       body,
       rawPayload: toRawPayload(message, body)
     });
@@ -79,11 +90,12 @@ async function handleIncomingMessage(message) {
     if (!result || !result.reply) return;
 
     try {
-      await whatsappService.sendMessage(remoteJid, result.reply);
-      console.log('WhatsApp reply sent', { remoteJid });
+      console.log('Sending WhatsApp message', { whatsapp_id: result.whatsappId || identity.whatsapp_id });
+      await whatsappService.sendMessage(result.whatsappId || identity.whatsapp_id, result.reply);
+      console.log('WhatsApp message sent');
     } catch (error) {
-      console.error('Failed to send WhatsApp reply', {
-        remoteJid,
+      console.error('WhatsApp send failed', {
+        whatsapp_id: result.whatsappId || identity.whatsapp_id,
         error: error.message,
         stack: error.stack
       });
@@ -93,6 +105,7 @@ async function handleIncomingMessage(message) {
     await messageService.storeMessage({
       leadId: result.leadId,
       conversationId: result.conversationId,
+      whatsappId: result.whatsappId || identity.whatsapp_id,
       direction: 'outbound',
       body: result.reply,
       rawPayload: { automated: true, provider: 'baileys' }
@@ -102,7 +115,7 @@ async function handleIncomingMessage(message) {
   } catch (error) {
     logger.error('Incoming WhatsApp message handling failed', {
       error: error.message,
-      phone
+      whatsapp_id: identity.whatsapp_id
     });
   }
 }

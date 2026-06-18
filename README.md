@@ -19,7 +19,6 @@ Variables criticas:
 - `ADMIN_API_KEY`: clave que debe enviar el CRM en `x-admin-api-key`.
 - `GEMINI_MODEL`: modelo de Gemini, por ejemplo `gemini-1.5-flash`.
 - `HOTMART_LINK`: link de pago, tambien editable desde `bot_settings`.
-- `LANDING_LINK`: link de landing/video, tambien editable desde `bot_settings`.
 - `WHATSAPP_SESSION_PATH`: carpeta local de sesion Baileys, recomendado `.baileys_auth`.
 - `PORT`: puerto HTTP. En Seenode usa `80`.
 
@@ -80,11 +79,13 @@ DATABASE_URL=
 ADMIN_API_KEY=
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-1.5-flash
-HOTMART_LINK=
-LANDING_LINK=
+GEMINI_TEMPERATURE=0.7
+GEMINI_MAX_OUTPUT_TOKENS=800
+HOTMART_LINK=https://pay.hotmart.com/T103515864E
 WHATSAPP_SESSION_PATH=.baileys_auth
 PORT=80
 NODE_ENV=production
+TIMEZONE=America/La_Paz
 ```
 
 ## WhatsApp QR
@@ -153,12 +154,12 @@ x-admin-api-key: TU_ADMIN_API_KEY
 Content-Type: application/json
 
 {
-  "jid": "591XXXXXXXX@s.whatsapp.net",
+  "leadId": "uuid-del-lead",
   "text": "Mensaje de prueba"
 }
 ```
 
-Este endpoint envia el mensaje directamente con Baileys al JID indicado y sirve para validar que `sendMessage` funciona.
+Este endpoint envia el mensaje con Baileys al `whatsapp_id` del lead. Tambien acepta `jid` para pruebas directas.
 
 ### Notas Para El CRM
 
@@ -185,7 +186,13 @@ Al iniciar, el servidor ejecuta `src/database/migrations/schema.sql` con `CREATE
 - `followups`
 - `admin_actions`
 
-El telefono normalizado (`+591...`) es el identificador principal del lead y evita duplicados. Con Baileys, el numero se extrae desde `remoteJid`, por ejemplo `591XXXXXXXX@s.whatsapp.net`.
+`whatsapp_id` es el JID real de Baileys y es el identificador usado para enviar mensajes. `phone` solo se guarda cuando se obtiene un numero real con seguridad, por ejemplo `+59171234567`. Si Baileys entrega un `@lid`, el backend guarda `phone = null`, `whatsapp_lid = ...@lid` y `display_phone = ID WhatsApp: ...`.
+
+El flujo envia directamente el acceso oficial de Hotmart:
+
+```text
+https://pay.hotmart.com/T103515864E
+```
 
 ## Memoria 24 Horas
 
@@ -202,7 +209,7 @@ El job `scheduledFollowUps` corre cada 5 minutos y envia follow-ups pendientes s
 - el lead no tiene `bot_paused = true`
 - el lead no tiene `human_takeover = true`
 
-Se crean follow-ups despues de enviar landing y despues de enviar el link de Hotmart.
+Se crean follow-ups despues de enviar el link de Hotmart.
 
 ## Gemini API
 

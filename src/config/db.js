@@ -39,7 +39,6 @@ async function seedDefaultSettings() {
     ['product_name', env.PRODUCT_NAME],
     ['product_price', String(env.PRODUCT_PRICE)],
     ['hotmart_link', env.HOTMART_LINK],
-    ['landing_link', env.LANDING_LINK],
     ['gemini_model', env.GEMINI_MODEL]
   ];
 

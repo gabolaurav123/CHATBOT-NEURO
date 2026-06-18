@@ -1,15 +1,6 @@
 const { env } = require('../config/env');
 const { addHours, addDays } = require('../utils/date');
 
-function landingFollowUp(lead) {
-  const name = lead.name || '';
-  return `Hola${name ? ` ${name}` : ''}, solo quería preguntarte algo 🙌
-
-¿Pudiste ver el video?
-
-Muchas personas nos dicen que por primera vez entienden qué les pasa cuando lo ven.`;
-}
-
 function paymentFollowUp1(lead) {
   const name = lead.name || '';
   return `Hola${name ? ` ${name}` : ''}, paso por aquí para confirmar algo.
@@ -30,9 +21,9 @@ function paymentFollowUp3(hotmartLink) {
 
 Pero muchas veces la claridad aparece cuando das el primer paso con acompañamiento.
 
-Si todavía quieres avanzar, te dejo nuevamente el acceso:
+Si todavía quieres avanzar, te dejo nuevamente el acceso oficial:
 
-${hotmartLink || '[HOTMART_LINK]'}`;
+${hotmartLink || 'https://pay.hotmart.com/T103515864E'}`;
 }
 
 function finalFollowUp(lead) {
@@ -44,14 +35,6 @@ No quiero insistirte, solo cerrar bien esta conversación.
 Por lo que me contaste, esto sí parecía importante para ti.
 
 ¿Quieres que dejemos tu proceso en pausa por ahora o todavía te interesa recibir orientación para entrar a Neurotraumas™?`;
-}
-
-function buildLandingFollowUp(lead) {
-  return {
-    type: 'landing_12h',
-    scheduledAt: addHours(new Date(), env.FOLLOWUP_1_HOURS),
-    message: landingFollowUp(lead)
-  };
 }
 
 function buildPaymentFollowUps(lead, hotmartLink) {
@@ -82,6 +65,5 @@ function buildPaymentFollowUps(lead, hotmartLink) {
 }
 
 module.exports = {
-  buildLandingFollowUp,
   buildPaymentFollowUps
 };

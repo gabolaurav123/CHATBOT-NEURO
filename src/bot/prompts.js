@@ -13,7 +13,9 @@ const KEYWORDS = [
   'precio',
   'inscripcion',
   'inscripción',
-  'quiero empezar'
+  'quiero empezar',
+  'quiero comprar',
+  'hola'
 ];
 
 const INTENTS = [
@@ -32,9 +34,11 @@ const INTENTS = [
 const STAGES = [
   'captacion',
   'diagnostico',
-  'landing_enviada',
+  'datos_solicitados',
   'oferta_presentada',
   'link_pago_enviado',
+  'post_link_conversacion',
+  'pago_reportado',
   'onboarding'
 ];
 

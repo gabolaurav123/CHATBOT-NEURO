@@ -14,14 +14,22 @@ async function processDueFollowUps() {
       const lead = await leadService.getLeadById(followUp.lead_id);
       if (!lead || lead.bot_paused || lead.human_takeover) continue;
 
-      await whatsappService.sendMessage(lead.phone, followUp.message);
+      const whatsappId = followUp.whatsapp_id || lead.whatsapp_id;
+      if (!whatsappId) {
+        await followupService.updateFollowUp(followUp.id, { status: 'failed' });
+        logger.error('Follow-up send skipped; no whatsapp_id available', { followUpId: followUp.id });
+        continue;
+      }
+
+      await whatsappService.sendMessage(whatsappId, followUp.message);
       const conversation = await messageService.getOrCreateActiveConversation(lead);
       await messageService.storeMessage({
         leadId: lead.id,
         conversationId: conversation.id,
+        whatsappId,
         direction: 'outbound',
         body: followUp.message,
-        rawPayload: { followUpId: followUp.id }
+        rawPayload: { followUpId: followUp.id, whatsapp_id: whatsappId }
       });
       await followupService.markFollowUpSent(followUp.id);
       await leadService.updateLastBotMessage(lead.id, followUp.message);
@@ -31,6 +39,7 @@ async function processDueFollowUps() {
         followUpId: followUp.id,
         error: error.message
       });
+      await followupService.updateFollowUp(followUp.id, { status: 'failed' }).catch(() => {});
     }
   }
 }

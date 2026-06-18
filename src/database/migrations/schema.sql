@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS leads (
   first_contact_at TIMESTAMP,
   last_contact_at TIMESTAMP,
   channel TEXT DEFAULT 'whatsapp',
-  phone TEXT UNIQUE NOT NULL,
+  phone TEXT UNIQUE,
   whatsapp_id TEXT,
   whatsapp_lid TEXT,
   display_phone TEXT,
@@ -36,13 +36,15 @@ CREATE TABLE IF NOT EXISTS leads (
   notes TEXT
 );
 
+ALTER TABLE leads ALTER COLUMN phone DROP NOT NULL;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS whatsapp_lid TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS display_phone TEXT;
 
 CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
-  phone TEXT NOT NULL,
+  phone TEXT,
+  whatsapp_id TEXT,
   status TEXT DEFAULT 'active',
   started_at TIMESTAMP DEFAULT NOW(),
   last_message_at TIMESTAMP,
@@ -52,10 +54,14 @@ CREATE TABLE IF NOT EXISTS conversations (
   metadata JSONB DEFAULT '{}'
 );
 
+ALTER TABLE conversations ALTER COLUMN phone DROP NOT NULL;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS whatsapp_id TEXT;
+
 CREATE TABLE IF NOT EXISTS messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
   conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  whatsapp_id TEXT,
   direction TEXT NOT NULL,
   message_type TEXT DEFAULT 'text',
   body TEXT,
@@ -63,16 +69,20 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS whatsapp_id TEXT;
+
 CREATE TABLE IF NOT EXISTS conversation_memory (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
-  phone TEXT NOT NULL,
+  phone TEXT,
   memory JSONB DEFAULT '{}',
   summary TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
   expires_at TIMESTAMP NOT NULL
 );
+
+ALTER TABLE conversation_memory ALTER COLUMN phone DROP NOT NULL;
 
 CREATE TABLE IF NOT EXISTS bot_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -114,7 +124,8 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE TABLE IF NOT EXISTS followups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
-  phone TEXT NOT NULL,
+  phone TEXT,
+  whatsapp_id TEXT,
   type TEXT,
   scheduled_at TIMESTAMP,
   sent_at TIMESTAMP,
@@ -122,6 +133,9 @@ CREATE TABLE IF NOT EXISTS followups (
   message TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE followups ALTER COLUMN phone DROP NOT NULL;
+ALTER TABLE followups ADD COLUMN IF NOT EXISTS whatsapp_id TEXT;
 
 CREATE TABLE IF NOT EXISTS admin_actions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -138,9 +152,12 @@ CREATE INDEX IF NOT EXISTS idx_leads_display_phone ON leads(display_phone);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(lead_status);
 CREATE INDEX IF NOT EXISTS idx_leads_funnel_stage ON leads(funnel_stage);
 CREATE INDEX IF NOT EXISTS idx_conversations_lead_id ON conversations(lead_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_whatsapp_id ON conversations(whatsapp_id);
 CREATE INDEX IF NOT EXISTS idx_messages_lead_created ON messages(lead_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_whatsapp_id ON messages(whatsapp_id);
 CREATE INDEX IF NOT EXISTS idx_memory_expires_at ON conversation_memory(expires_at);
 CREATE INDEX IF NOT EXISTS idx_followups_due ON followups(status, scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_followups_whatsapp_id ON followups(whatsapp_id);
 CREATE INDEX IF NOT EXISTS idx_payments_lead_id ON payments(lead_id);
 
 CREATE OR REPLACE FUNCTION set_updated_at()

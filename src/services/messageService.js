@@ -12,13 +12,26 @@ async function getOrCreateActiveConversation(lead) {
     [lead.id]
   );
 
-  if (existing.rows[0]) return existing.rows[0];
+  if (existing.rows[0]) {
+    if (lead.whatsapp_id && existing.rows[0].whatsapp_id !== lead.whatsapp_id) {
+      const updated = await query(
+        `UPDATE conversations
+         SET whatsapp_id = $1,
+             phone = COALESCE($2, phone)
+         WHERE id = $3
+         RETURNING *`,
+        [lead.whatsapp_id, lead.phone || null, existing.rows[0].id]
+      );
+      return updated.rows[0];
+    }
+    return existing.rows[0];
+  }
 
   const created = await query(
-    `INSERT INTO conversations (lead_id, phone, last_message_at, expires_at, current_step)
-     VALUES ($1, $2, NOW(), NOW() + ($3::int * INTERVAL '1 hour'), 'inicio')
+    `INSERT INTO conversations (lead_id, phone, whatsapp_id, last_message_at, expires_at, current_step)
+     VALUES ($1, $2, $3, NOW(), NOW() + ($4::int * INTERVAL '1 hour'), 'inicio')
      RETURNING *`,
-    [lead.id, lead.phone, env.MEMORY_EXPIRATION_HOURS]
+    [lead.id, lead.phone || null, lead.whatsapp_id || null, env.MEMORY_EXPIRATION_HOURS]
   );
 
   return created.rows[0];
@@ -48,12 +61,12 @@ async function updateConversation(id, fields) {
   return result.rows[0] || null;
 }
 
-async function storeMessage({ leadId, conversationId, direction, body, rawPayload, messageType = 'text' }) {
+async function storeMessage({ leadId, conversationId, direction, body, rawPayload, messageType = 'text', whatsappId }) {
   const result = await query(
-    `INSERT INTO messages (lead_id, conversation_id, direction, message_type, body, raw_payload)
-     VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+    `INSERT INTO messages (lead_id, conversation_id, whatsapp_id, direction, message_type, body, raw_payload)
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
      RETURNING *`,
-    [leadId, conversationId, direction, messageType, body || '', JSON.stringify(rawPayload || {})]
+    [leadId, conversationId, whatsappId || null, direction, messageType, body || '', JSON.stringify(rawPayload || {})]
   );
 
   await query(

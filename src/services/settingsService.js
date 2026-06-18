@@ -50,7 +50,6 @@ async function getRuntimeSettings() {
     product_name: settings.product_name || env.PRODUCT_NAME,
     product_price: settings.product_price || String(env.PRODUCT_PRICE),
     hotmart_link: settings.hotmart_link || env.HOTMART_LINK,
-    landing_link: settings.landing_link || env.LANDING_LINK,
     gemini_model: settings.gemini_model || env.GEMINI_MODEL
   };
 }

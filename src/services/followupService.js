@@ -2,12 +2,12 @@ const { query } = require('../config/db');
 const { isUuid } = require('../utils/validators');
 const { decorateLeadContact } = require('./leadService');
 
-async function createFollowUp({ leadId, phone, type, scheduledAt, message }) {
+async function createFollowUp({ leadId, phone, whatsappId, type, scheduledAt, message }) {
   const result = await query(
-    `INSERT INTO followups (lead_id, phone, type, scheduled_at, message)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO followups (lead_id, phone, whatsapp_id, type, scheduled_at, message)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [leadId, phone, type, scheduledAt, message]
+    [leadId, phone || null, whatsappId || null, type, scheduledAt, message]
   );
 
   return result.rows[0];
@@ -132,7 +132,7 @@ async function getFollowUpById(id) {
 }
 
 async function updateFollowUp(id, fields) {
-  const allowed = new Set(['type', 'scheduled_at', 'sent_at', 'status', 'message']);
+  const allowed = new Set(['type', 'scheduled_at', 'sent_at', 'status', 'message', 'whatsapp_id']);
   const entries = Object.entries(fields || {}).filter(([key]) => allowed.has(key));
 
   if (entries.length === 0) return getFollowUpById(id);

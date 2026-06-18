@@ -6,9 +6,12 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'name',
   'email',
   'username',
+  'phone',
   'whatsapp_id',
   'whatsapp_lid',
   'display_phone',
+  'first_contact_at',
+  'last_contact_at',
   'source_keyword',
   'main_pain',
   'emotional_response',
@@ -46,7 +49,8 @@ function decorateLeadContact(lead) {
   } else if (lead.display_phone) {
     displayContact = lead.display_phone;
   } else if (lead.whatsapp_lid || String(lead.whatsapp_id || '').endsWith('@lid')) {
-    displayContact = `ID WhatsApp: ${lead.whatsapp_lid || lead.whatsapp_id}`;
+    const lid = lead.whatsapp_lid || lead.whatsapp_id;
+    displayContact = `ID WhatsApp: ${String(lid).split('@')[0]}`;
   } else if (lead.whatsapp_id) {
     displayContact = lead.whatsapp_id;
   } else {
@@ -60,23 +64,42 @@ function decorateLeadContact(lead) {
   };
 }
 
-function leadIdentityFromWhatsApp({ phone, whatsappId }) {
-  const isLid = String(whatsappId || '').endsWith('@lid');
-  const realPhone = looksLikeRealPhone(phone) ? phone : null;
-
-  return {
-    storedPhone: realPhone || whatsappId || phone,
-    displayPhone: realPhone,
-    whatsappLid: isLid ? whatsappId : null
-  };
-}
-
 function getLeadRecipient(lead) {
-  return lead.whatsapp_id || lead.whatsapp_lid || lead.display_phone || lead.phone;
+  return lead && lead.whatsapp_id ? lead.whatsapp_id : null;
 }
 
-async function upsertLeadByPhone({ phone, whatsappId, sourceKeyword }) {
-  const identity = leadIdentityFromWhatsApp({ phone, whatsappId });
+async function findLeadByWhatsAppIdentity(identity) {
+  if (identity.whatsapp_id) {
+    const byWhatsAppId = await query('SELECT * FROM leads WHERE whatsapp_id = $1 ORDER BY updated_at DESC LIMIT 1', [identity.whatsapp_id]);
+    if (byWhatsAppId.rows[0]) return decorateLeadContact(byWhatsAppId.rows[0]);
+  }
+
+  if (identity.phone) {
+    const byPhone = await query('SELECT * FROM leads WHERE phone = $1 ORDER BY updated_at DESC LIMIT 1', [identity.phone]);
+    if (byPhone.rows[0]) return decorateLeadContact(byPhone.rows[0]);
+  }
+
+  return null;
+}
+
+async function upsertLeadByWhatsAppIdentity({ identity, sourceKeyword }) {
+  const existing = await findLeadByWhatsAppIdentity(identity);
+
+  if (existing) {
+    return updateLead(existing.id, {
+      phone: identity.phone || (looksLikeRealPhone(existing.phone) ? existing.phone : null),
+      whatsapp_id: identity.whatsapp_id || existing.whatsapp_id,
+      whatsapp_lid: identity.whatsapp_lid || existing.whatsapp_lid,
+      display_phone: identity.display_phone || existing.display_phone,
+      source_keyword: existing.source_keyword || sourceKeyword || null,
+      first_contact_at: existing.first_contact_at || new Date(),
+      last_contact_at: new Date(),
+      memory_expires_at: existing.consent_24h
+        ? new Date(Date.now() + env.MEMORY_EXPIRATION_HOURS * 60 * 60 * 1000)
+        : existing.memory_expires_at
+    });
+  }
+
   const result = await query(
     `INSERT INTO leads (
        phone,
@@ -89,29 +112,32 @@ async function upsertLeadByPhone({ phone, whatsappId, sourceKeyword }) {
        memory_expires_at
      )
      VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), NOW() + ($6::int * INTERVAL '1 hour'))
-     ON CONFLICT (phone) DO UPDATE SET
-       whatsapp_id = COALESCE(EXCLUDED.whatsapp_id, leads.whatsapp_id),
-       whatsapp_lid = COALESCE(EXCLUDED.whatsapp_lid, leads.whatsapp_lid),
-       display_phone = COALESCE(EXCLUDED.display_phone, leads.display_phone),
-       source_keyword = COALESCE(leads.source_keyword, EXCLUDED.source_keyword),
-       first_contact_at = COALESCE(leads.first_contact_at, NOW()),
-       last_contact_at = NOW(),
-       memory_expires_at = CASE
-         WHEN leads.consent_24h = TRUE THEN NOW() + ($6::int * INTERVAL '1 hour')
-         ELSE leads.memory_expires_at
-       END
      RETURNING *`,
     [
-      identity.storedPhone,
-      whatsappId || null,
-      identity.whatsappLid,
-      identity.displayPhone,
+      identity.phone || null,
+      identity.whatsapp_id || null,
+      identity.whatsapp_lid || null,
+      identity.display_phone || null,
       sourceKeyword || null,
       env.MEMORY_EXPIRATION_HOURS
     ]
   );
 
   return decorateLeadContact(result.rows[0]);
+}
+
+async function upsertLeadByPhone({ phone, whatsappId, sourceKeyword }) {
+  return upsertLeadByWhatsAppIdentity({
+    identity: {
+      phone: looksLikeRealPhone(phone) ? phone : null,
+      whatsapp_id: whatsappId || null,
+      whatsapp_lid: String(whatsappId || '').endsWith('@lid') ? whatsappId : null,
+      display_phone: looksLikeRealPhone(phone)
+        ? phone
+        : (String(whatsappId || '').endsWith('@lid') ? `ID WhatsApp: ${String(whatsappId).split('@')[0]}` : whatsappId)
+    },
+    sourceKeyword
+  });
 }
 
 async function getLeadById(id) {
@@ -234,6 +260,8 @@ async function setManualControl(id, fields) {
 
 module.exports = {
   upsertLeadByPhone,
+  upsertLeadByWhatsAppIdentity,
+  findLeadByWhatsAppIdentity,
   getLeadById,
   getLeadByPhone,
   listLeads,

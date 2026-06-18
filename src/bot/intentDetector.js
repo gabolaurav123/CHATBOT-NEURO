@@ -86,7 +86,7 @@ function detectPain(message) {
 
 function detectPurchaseIntent(message) {
   const text = normalizeText(message);
-  return /(quiero empezar|me inscribo|pasame el link|p[aá]same el link|quiero pagar|como hago|c[oó]mo hago|quiero comprar|mandame el link|m[aá]ndame el link|link de pago|pagar)/.test(text);
+  return /(^si$|quiero empezar|quiero comprar|me interesa|me inscribo|pasame el link|pasame acceso|quiero pagar|como hago|quiero comprar|mandame el link|donde pago|link de pago|inscripcion|precio|link|pagar)/.test(text);
 }
 
 function detectDeleteRequest(message) {
@@ -109,9 +109,9 @@ function detectPriceIntent(message) {
   return /(precio|cuanto cuesta|cuánto cuesta|valor|inversion|inversión|costo|cuesta)/.test(text);
 }
 
-function detectVideoSeen(message) {
+function detectPaymentReported(message) {
   const text = normalizeText(message);
-  return /(vi el video|lo vi|ya lo vi|visto|revis[eé]|mire el video|mir[eé] el video)/.test(text);
+  return /(ya pague|listo pagado|ya me inscribi|acabo de pagar|pago realizado|ya compre)/.test(text);
 }
 
 function detectUrgency(message) {
@@ -147,7 +147,7 @@ module.exports = {
   detectStopRequest,
   detectHumanRequest,
   detectPriceIntent,
-  detectVideoSeen,
+  detectPaymentReported,
   detectUrgency,
   detectLeadIntent
 };
