@@ -1,0 +1,33 @@
+{
+  "name": "chatbot-neuro",
+  "version": "1.0.0",
+  "description": "Chatbot vendedor para Neurotraumas conectado a WhatsApp, PostgreSQL y Gemini.",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "build": "node scripts/check-syntax.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "chatbot",
+    "postgresql",
+    "gemini",
+    "crm"
+  ],
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "node-cron": "^4.3.0",
+    "pg": "^8.13.1",
+    "qrcode": "^1.5.4",
+    "whatsapp-web.js": "^1.26.0",
+    "zod": "^3.24.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

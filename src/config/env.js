@@ -1,0 +1,53 @@
+const dotenv = require('dotenv');
+
+dotenv.config();
+
+function numberFromEnv(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+
+  const value = Number(raw);
+  if (Number.isNaN(value)) {
+    throw new Error(`${name} must be a valid number`);
+  }
+
+  return value;
+}
+
+const env = {
+  DATABASE_URL: process.env.DATABASE_URL,
+  PORT: numberFromEnv('PORT', 3000),
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  ADMIN_API_KEY: process.env.ADMIN_API_KEY,
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+  GEMINI_TEMPERATURE: numberFromEnv('GEMINI_TEMPERATURE', 0.7),
+  GEMINI_MAX_OUTPUT_TOKENS: numberFromEnv('GEMINI_MAX_OUTPUT_TOKENS', 800),
+  BOT_NAME: process.env.BOT_NAME || 'Neurotraumas Bot',
+  PRODUCT_NAME: process.env.PRODUCT_NAME || 'Neurotraumas(TM)',
+  PRODUCT_PRICE: numberFromEnv('PRODUCT_PRICE', 360),
+  HOTMART_LINK: process.env.HOTMART_LINK || '',
+  LANDING_LINK: process.env.LANDING_LINK || '',
+  MEMORY_EXPIRATION_HOURS: numberFromEnv('MEMORY_EXPIRATION_HOURS', 24),
+  FOLLOWUP_1_HOURS: numberFromEnv('FOLLOWUP_1_HOURS', 12),
+  FOLLOWUP_PAYMENT_1_HOURS: numberFromEnv('FOLLOWUP_PAYMENT_1_HOURS', 6),
+  FOLLOWUP_PAYMENT_2_HOURS: numberFromEnv('FOLLOWUP_PAYMENT_2_HOURS', 24),
+  FOLLOWUP_PAYMENT_3_HOURS: numberFromEnv('FOLLOWUP_PAYMENT_3_HOURS', 48),
+  FOLLOWUP_4_DAYS: numberFromEnv('FOLLOWUP_4_DAYS', 7),
+  WHATSAPP_SESSION_PATH: process.env.WHATSAPP_SESSION_PATH || '.wwebjs_auth',
+  TIMEZONE: process.env.TIMEZONE || 'America/La_Paz'
+};
+
+function validateStartupEnv() {
+  const required = ['DATABASE_URL', 'ADMIN_API_KEY', 'GEMINI_API_KEY'];
+  const missing = required.filter((name) => !env[name]);
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
+
+module.exports = {
+  env,
+  validateStartupEnv
+};
