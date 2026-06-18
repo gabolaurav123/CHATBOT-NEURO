@@ -236,7 +236,8 @@ class WhatsAppClientManager extends EventEmitter {
       throw new Error('WhatsApp client is not connected');
     }
 
-    const jid = toWhatsAppId(phoneOrChatId);
+    const value = String(phoneOrChatId || '').trim();
+    const jid = value.includes('@') ? value : toWhatsAppId(value);
     if (!jid) {
       throw new Error('Invalid WhatsApp recipient');
     }

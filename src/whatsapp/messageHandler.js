@@ -49,13 +49,22 @@ function toRawPayload(message, body) {
 }
 
 async function handleIncomingMessage(message) {
-  if (!message || !message.key || message.key.fromMe) return;
+  const remoteJid = message && message.key && message.key.remoteJid;
+  const fromMe = Boolean(message && message.key && message.key.fromMe);
+  const messageType = message && message.message ? Object.keys(message.message)[0] : 'unknown';
+  const body = String(extractMessageBody(message) || '').trim();
 
-  const remoteJid = message.key.remoteJid;
+  console.log('Incoming WhatsApp message', {
+    remoteJid,
+    text: body,
+    fromMe,
+    messageType
+  });
+
+  if (!message || !message.key || fromMe) return;
   if (!remoteJid || remoteJid.endsWith('@g.us')) return;
 
   const phone = normalizePhone(remoteJid);
-  const body = String(extractMessageBody(message) || '').trim();
 
   if (!phone || !body) return;
 
@@ -69,7 +78,18 @@ async function handleIncomingMessage(message) {
 
     if (!result || !result.reply) return;
 
-    await whatsappService.sendMessage(phone, result.reply);
+    try {
+      await whatsappService.sendMessage(remoteJid, result.reply);
+      console.log('WhatsApp reply sent', { remoteJid });
+    } catch (error) {
+      console.error('Failed to send WhatsApp reply', {
+        remoteJid,
+        error: error.message,
+        stack: error.stack
+      });
+      return;
+    }
+
     await messageService.storeMessage({
       leadId: result.leadId,
       conversationId: result.conversationId,

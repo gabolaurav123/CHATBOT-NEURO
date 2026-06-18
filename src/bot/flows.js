@@ -24,6 +24,13 @@ Dime, ¿qué sientes que hoy te está afectando más?
 6️⃣ Solo quiero información`;
 }
 
+function greetingMessage() {
+  return `Hola 👋
+Gracias por escribirme.
+
+Para orientarte mejor, dime qué estás buscando sobre Neurotraumas™ o escribe NEURO para recibir la información inicial.`;
+}
+
 const painReplies = {
   ansiedad: `Gracias por compartirlo ❤️
 
@@ -264,11 +271,26 @@ function humanTakeoverMessage() {
 }
 
 function fallbackMessage() {
-  return `Gracias por escribirme. Quiero orientarte bien, pero necesito entender un poco mejor tu caso. ¿Qué sientes que hoy te está afectando más: ansiedad, autosabotaje, pensamientos repetitivos, relaciones difíciles o bloqueo?`;
+  return `Hola 👋
+Gracias por escribirme.
+
+Vi tu interés en Neurotraumas™.
+
+Antes de enviarte información, quiero entender algo importante para poder orientarte mejor.
+
+Dime, ¿qué sientes que hoy te está afectando más?
+
+1️⃣ Ansiedad constante
+2️⃣ Autosabotaje
+3️⃣ Pensamientos repetitivos
+4️⃣ Relaciones difíciles
+5️⃣ Me siento bloqueado(a)
+6️⃣ Solo quiero información`;
 }
 
 module.exports = {
   firstMessage,
+  greetingMessage,
   painReplies,
   diagnosticQuestion1,
   diagnosticQuestion2,

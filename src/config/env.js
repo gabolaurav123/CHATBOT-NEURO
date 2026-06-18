@@ -39,7 +39,7 @@ const env = {
 };
 
 function validateStartupEnv() {
-  const required = ['DATABASE_URL', 'ADMIN_API_KEY', 'GEMINI_API_KEY'];
+  const required = ['DATABASE_URL', 'ADMIN_API_KEY'];
   const missing = required.filter((name) => !env[name]);
 
   if (missing.length > 0) {

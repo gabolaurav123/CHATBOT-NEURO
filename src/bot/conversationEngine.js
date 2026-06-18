@@ -12,6 +12,7 @@ const { addHours } = require('../utils/date');
 const { env } = require('../config/env');
 const {
   detectInitialKeyword,
+  detectGreeting,
   detectPain,
   detectPurchaseIntent,
   detectPriceIntent,
@@ -21,6 +22,7 @@ const {
 const { detectObjection } = require('./objectionDetector');
 const {
   firstMessage,
+  greetingMessage,
   painReplies,
   diagnosticQuestion1,
   diagnosticQuestion2,
@@ -468,21 +470,19 @@ async function handleIncomingMessage({ whatsappId, phone, body, rawPayload }) {
   await leadService.updateLastUserMessage(lead.id, body);
   lead = await leadService.getLeadById(lead.id);
 
-  const memoryRow = await memoryService.getMemoryByLeadId(lead.id);
-  const memory = memoryObject(memoryRow);
-  const history = await messageService.getConversationHistory(lead.id);
-  const settings = await settingsService.getRuntimeSettings();
-  const classification = await classifyUserMessage({ message: body, lead, memory, history });
-  classification.stopRequested = /^(stop|cancelar|no me escribas|no quiero mensajes|no me contacten)/i.test(body.trim());
-
-  const specialReply = await handleSpecialCases({ lead, conversation, classification });
-  if (specialReply) {
-    return result({ lead, conversation, reply: specialReply });
-  }
+  console.log('Bot control state', {
+    bot_paused: lead.bot_paused,
+    human_takeover: lead.human_takeover
+  });
 
   if (lead.human_takeover || lead.bot_paused) {
     return result({ lead, conversation, reply: null });
   }
+
+  const memoryRow = await memoryService.getMemoryByLeadId(lead.id);
+  const memory = memoryObject(memoryRow);
+  const history = await messageService.getConversationHistory(lead.id);
+  const settings = await settingsService.getRuntimeSettings();
 
   if (sourceKeyword && lead.funnel_stage === 'inicio') {
     await updateLeadAndMemory({
@@ -503,6 +503,18 @@ async function handleIncomingMessage({ whatsappId, phone, body, rawPayload }) {
     });
 
     return result({ lead, conversation, reply: firstMessage() });
+  }
+
+  if (detectGreeting(body) && lead.funnel_stage === 'inicio') {
+    return result({ lead, conversation, reply: greetingMessage() });
+  }
+
+  const classification = await classifyUserMessage({ message: body, lead, memory, history });
+  classification.stopRequested = /^(stop|cancelar|no me escribas|no quiero mensajes|no me contacten)/i.test(body.trim());
+
+  const specialReply = await handleSpecialCases({ lead, conversation, classification });
+  if (specialReply) {
+    return result({ lead, conversation, reply: specialReply });
   }
 
   if (classification.wantsPaymentLink || detectPurchaseIntent(body)) {

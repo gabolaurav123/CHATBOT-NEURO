@@ -143,6 +143,22 @@ Endpoints principales:
 - `GET /api/followups`
 - `PATCH /api/followups/:id`
 - `POST /api/followups/:id/send-now`
+- `POST /api/test/send-message`
+
+Endpoint de prueba de WhatsApp:
+
+```http
+POST /api/test/send-message
+x-admin-api-key: TU_ADMIN_API_KEY
+Content-Type: application/json
+
+{
+  "jid": "591XXXXXXXX@s.whatsapp.net",
+  "text": "Mensaje de prueba"
+}
+```
+
+Este endpoint envia el mensaje directamente con Baileys al JID indicado y sirve para validar que `sendMessage` funciona.
 
 ## Base De Datos
 

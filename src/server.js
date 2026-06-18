@@ -9,6 +9,7 @@ const { conversationsRouter, messagesRouter } = require('./routes/conversations.
 const settingsRoutes = require('./routes/settings.routes');
 const paymentsRoutes = require('./routes/payments.routes');
 const followupsRoutes = require('./routes/followups.routes');
+const testRoutes = require('./routes/test.routes');
 
 function adminAuth(req, res, next) {
   if (!env.ADMIN_API_KEY) {
@@ -38,6 +39,7 @@ function createApp() {
   app.use('/api/settings', adminAuth, settingsRoutes);
   app.use('/api/payments', adminAuth, paymentsRoutes);
   app.use('/api/followups', adminAuth, followupsRoutes);
+  app.use('/api/test', adminAuth, testRoutes);
 
   app.use((req, res) => {
     res.status(404).json({ error: 'Not found' });

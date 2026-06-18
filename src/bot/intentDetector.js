@@ -66,6 +66,11 @@ function detectInitialKeyword(message) {
   return null;
 }
 
+function detectGreeting(message) {
+  const text = normalizeText(message);
+  return /^(hola|buenas|buenos dias|buen dia|buenas tardes|buenas noches|hello|hi)$/.test(text);
+}
+
 function detectPain(message) {
   const text = normalizeText(message);
 
@@ -135,6 +140,7 @@ function detectLeadIntent(message) {
 module.exports = {
   normalizeText,
   detectInitialKeyword,
+  detectGreeting,
   detectPain,
   detectPurchaseIntent,
   detectDeleteRequest,
