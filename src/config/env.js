@@ -16,7 +16,7 @@ function numberFromEnv(name, fallback) {
 
 const env = {
   DATABASE_URL: process.env.DATABASE_URL,
-  PORT: numberFromEnv('PORT', 3000),
+  PORT: numberFromEnv('PORT', 80),
   NODE_ENV: process.env.NODE_ENV || 'development',
   ADMIN_API_KEY: process.env.ADMIN_API_KEY,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
@@ -34,7 +34,7 @@ const env = {
   FOLLOWUP_PAYMENT_2_HOURS: numberFromEnv('FOLLOWUP_PAYMENT_2_HOURS', 24),
   FOLLOWUP_PAYMENT_3_HOURS: numberFromEnv('FOLLOWUP_PAYMENT_3_HOURS', 48),
   FOLLOWUP_4_DAYS: numberFromEnv('FOLLOWUP_4_DAYS', 7),
-  WHATSAPP_SESSION_PATH: process.env.WHATSAPP_SESSION_PATH || '.wwebjs_auth',
+  WHATSAPP_SESSION_PATH: process.env.WHATSAPP_SESSION_PATH || '.baileys_auth',
   TIMEZONE: process.env.TIMEZONE || 'America/La_Paz'
 };
 

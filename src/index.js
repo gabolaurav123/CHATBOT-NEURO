@@ -1,4 +1,4 @@
-const { env, validateStartupEnv } = require('./config/env');
+const { validateStartupEnv } = require('./config/env');
 const { initializeDatabase, closePool } = require('./config/db');
 const { createApp } = require('./server');
 const whatsappClient = require('./whatsapp/client');
@@ -12,8 +12,9 @@ async function main() {
   await initializeDatabase();
 
   const app = createApp();
-  const server = app.listen(env.PORT, () => {
-    logger.info(`Server listening on port ${env.PORT}`);
+  const PORT = process.env.PORT || 80;
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server listening on port ${PORT}`);
   });
 
   const jobs = [

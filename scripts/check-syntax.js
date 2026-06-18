@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const ignored = new Set(['node_modules', '.git', '.wwebjs_auth', '.wwebjs_cache']);
+const ignored = new Set(['node_modules', '.git', '.baileys_auth']);
 const files = [];
 
 function walk(dir) {

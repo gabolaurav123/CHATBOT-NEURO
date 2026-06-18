@@ -1,7 +1,14 @@
 const EventEmitter = require('events');
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const fs = require('fs-extra');
+const pino = require('pino');
+const {
+  DisconnectReason,
+  makeWASocket,
+  useMultiFileAuthState
+} = require('@whiskeysockets/baileys');
 const { env } = require('../config/env');
 const { logger } = require('../utils/logger');
+const { normalizePhone, toWhatsAppId } = require('../utils/normalizePhone');
 const { qrToDataUrl } = require('./qr');
 const { updateSessionSnapshot, clearQr, getLatestSession } = require('./session');
 
@@ -14,6 +21,7 @@ class WhatsAppClientManager extends EventEmitter {
     this.connectedPhone = null;
     this.messageHandler = null;
     this.initializing = false;
+    this.manualClose = false;
   }
 
   async initialize(messageHandler, { force = false } = {}) {
@@ -28,43 +36,59 @@ class WhatsAppClientManager extends EventEmitter {
       await this.destroyClient();
     }
 
+    this.manualClose = false;
     this.initializing = true;
     this.status = 'initializing';
-    await updateSessionSnapshot({ status: this.status, sessionInfo: { reason: 'initialize' } });
+    await updateSessionSnapshot({ status: this.status, sessionInfo: { reason: 'initialize', provider: 'baileys' } });
 
-    const client = new Client({
-      authStrategy: new LocalAuth({ dataPath: env.WHATSAPP_SESSION_PATH }),
-      puppeteer: {
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    const { state, saveCreds } = await useMultiFileAuthState(env.WHATSAPP_SESSION_PATH);
+
+    const client = makeWASocket({
+      auth: state,
+      printQRInTerminal: false,
+      logger: pino({ level: 'silent' }),
+      syncFullHistory: false,
+      markOnlineOnConnect: false
+    });
+
+    client.ev.on('creds.update', saveCreds);
+
+    client.ev.on('connection.update', async (update) => {
+      await this.handleConnectionUpdate(update);
+    });
+
+    client.ev.on('messages.upsert', async ({ messages }) => {
+      for (const message of messages || []) {
+        if (this.messageHandler) {
+          await this.messageHandler(message);
+        }
       }
     });
 
-    client.on('qr', async (qr) => {
+    this.client = client;
+  }
+
+  async handleConnectionUpdate(update) {
+    const { connection, lastDisconnect, qr } = update;
+
+    if (qr) {
       this.status = 'qr_pending';
       this.qr = await qrToDataUrl(qr);
+      this.initializing = false;
       await updateSessionSnapshot({
         status: this.status,
         qrCode: this.qr,
         setQrTimestamp: true,
-        sessionInfo: { event: 'qr' }
+        sessionInfo: { event: 'qr', provider: 'baileys' }
       });
       this.emit('qr', this.qr);
-      logger.info('WhatsApp QR generated');
-    });
+      logger.info('WhatsApp QR generated with Baileys');
+    }
 
-    client.on('authenticated', async () => {
-      logger.info('WhatsApp authenticated');
-      await updateSessionSnapshot({
-        status: 'initializing',
-        sessionInfo: { event: 'authenticated' }
-      });
-    });
-
-    client.on('ready', async () => {
+    if (connection === 'open') {
       this.initializing = false;
       this.status = 'connected';
-      this.connectedPhone = client.info && client.info.wid ? `+${client.info.wid.user}` : null;
+      this.connectedPhone = normalizePhone(this.client && this.client.user && this.client.user.id);
       this.qr = null;
 
       await clearQr();
@@ -73,64 +97,50 @@ class WhatsAppClientManager extends EventEmitter {
         connectedPhone: this.connectedPhone,
         setConnectedTimestamp: true,
         sessionInfo: {
-          event: 'ready',
-          platform: client.info && client.info.platform
+          event: 'connected',
+          provider: 'baileys',
+          user: this.client && this.client.user
         }
       });
       this.emit('ready');
-      logger.info('WhatsApp connected', { connectedPhone: this.connectedPhone });
-    });
+      logger.info('WhatsApp connected with Baileys', { connectedPhone: this.connectedPhone });
+    }
 
-    client.on('auth_failure', async (message) => {
-      this.initializing = false;
-      this.status = 'disconnected';
-      logger.warn('WhatsApp auth failure', { message });
-      await clearQr();
-      await updateSessionSnapshot({
-        status: this.status,
-        setDisconnectedTimestamp: true,
-        sessionInfo: { event: 'auth_failure', message }
-      });
-    });
-
-    client.on('disconnected', async (reason) => {
+    if (connection === 'close') {
       this.initializing = false;
       this.status = 'disconnected';
       this.connectedPhone = null;
-      logger.warn('WhatsApp disconnected', { reason });
+      this.qr = null;
+
+      const statusCode = lastDisconnect && lastDisconnect.error && lastDisconnect.error.output
+        ? lastDisconnect.error.output.statusCode
+        : undefined;
+
       await clearQr();
       await updateSessionSnapshot({
         status: this.status,
         clearConnectedPhone: true,
         setDisconnectedTimestamp: true,
-        sessionInfo: { event: 'disconnected', reason }
+        sessionInfo: {
+          event: 'disconnected',
+          provider: 'baileys',
+          statusCode
+        }
       });
-    });
 
-    client.on('message', async (message) => {
-      if (this.messageHandler) {
-        await this.messageHandler(message);
+      logger.warn('WhatsApp disconnected', { statusCode });
+
+      if (!this.manualClose && statusCode !== DisconnectReason.loggedOut) {
+        setTimeout(() => {
+          this.initialize(this.messageHandler, { force: true }).catch((error) => {
+            logger.error('WhatsApp reconnect failed', { error: error.message });
+          });
+        }, 5000);
       }
-    });
-
-    this.client = client;
-
-    try {
-      await client.initialize();
-    } catch (error) {
-      this.initializing = false;
-      this.status = 'disconnected';
-      logger.error('WhatsApp initialization failed', { error: error.message });
-      await updateSessionSnapshot({
-        status: this.status,
-        setDisconnectedTimestamp: true,
-        sessionInfo: { event: 'initialize_error', error: error.message }
-      });
-      throw error;
     }
   }
 
-  async waitForQr(timeoutMs = 20000) {
+  async waitForQr(timeoutMs = 30000) {
     if (this.qr) return this.qr;
 
     return new Promise((resolve, reject) => {
@@ -149,9 +159,14 @@ class WhatsAppClientManager extends EventEmitter {
   }
 
   async generateQr() {
-    if (this.status === 'connected') {
-      return this.getQr();
-    }
+    this.manualClose = true;
+    await this.destroyClient();
+    await fs.remove(env.WHATSAPP_SESSION_PATH);
+    this.manualClose = false;
+    this.qr = null;
+    this.connectedPhone = null;
+    this.status = 'initializing';
+    await clearQr();
 
     await this.initialize(this.messageHandler, { force: true });
     await this.waitForQr();
@@ -164,7 +179,9 @@ class WhatsAppClientManager extends EventEmitter {
   }
 
   async logout() {
-    if (this.client) {
+    this.manualClose = true;
+
+    if (this.client && typeof this.client.logout === 'function') {
       try {
         await this.client.logout();
       } catch (error) {
@@ -173,6 +190,7 @@ class WhatsAppClientManager extends EventEmitter {
     }
 
     await this.destroyClient();
+    await fs.remove(env.WHATSAPP_SESSION_PATH);
     this.status = 'disconnected';
     this.qr = null;
     this.connectedPhone = null;
@@ -181,19 +199,32 @@ class WhatsAppClientManager extends EventEmitter {
       status: this.status,
       clearConnectedPhone: true,
       setDisconnectedTimestamp: true,
-      sessionInfo: { event: 'logout' }
+      sessionInfo: { event: 'logout', provider: 'baileys' }
     });
 
+    this.manualClose = false;
     return this.getStatus();
   }
 
   async destroyClient() {
     if (!this.client) return;
 
+    this.manualClose = true;
+
     try {
-      await this.client.destroy();
+      if (this.client.ev && typeof this.client.ev.removeAllListeners === 'function') {
+        this.client.ev.removeAllListeners('connection.update');
+        this.client.ev.removeAllListeners('messages.upsert');
+        this.client.ev.removeAllListeners('creds.update');
+      }
+      if (this.client.ws && typeof this.client.ws.close === 'function') {
+        this.client.ws.close();
+      }
+      if (typeof this.client.end === 'function') {
+        this.client.end();
+      }
     } catch (error) {
-      logger.warn('WhatsApp destroy failed', { error: error.message });
+      logger.warn('WhatsApp socket close failed', { error: error.message });
     }
 
     this.client = null;
@@ -205,18 +236,21 @@ class WhatsAppClientManager extends EventEmitter {
       throw new Error('WhatsApp client is not connected');
     }
 
-    const chatId = String(phoneOrChatId).includes('@c.us')
-      ? phoneOrChatId
-      : `${String(phoneOrChatId).replace(/\D/g, '')}@c.us`;
+    const jid = toWhatsAppId(phoneOrChatId);
+    if (!jid) {
+      throw new Error('Invalid WhatsApp recipient');
+    }
 
-    return this.client.sendMessage(chatId, message);
+    return this.client.sendMessage(jid, { text: message });
   }
 
   async getStatus() {
     const latest = await getLatestSession();
+    const latestStatus = latest && latest.status;
+    const status = this.status !== 'disconnected' ? this.status : latestStatus || 'disconnected';
 
     return {
-      status: this.status || (latest && latest.status) || 'disconnected',
+      status,
       connectedPhone: this.connectedPhone || (latest && latest.connected_phone) || null,
       lastConnectedAt: latest && latest.last_connected_at,
       lastQrAt: latest && latest.last_qr_at,
@@ -226,9 +260,12 @@ class WhatsAppClientManager extends EventEmitter {
 
   async getQr() {
     const latest = await getLatestSession();
+    const latestStatus = latest && latest.status;
+    const hasQr = this.qr || (latest && latest.qr_code);
+
     return {
-      qr: this.qr || (latest && latest.qr_code) || null,
-      status: this.status || (latest && latest.status) || 'disconnected'
+      qr: hasQr || null,
+      status: this.status !== 'disconnected' ? this.status : latestStatus || 'disconnected'
     };
   }
 }

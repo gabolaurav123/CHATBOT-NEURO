@@ -3,16 +3,20 @@ function normalizePhone(value) {
 
   const raw = String(value).trim();
   const withoutDomain = raw.includes('@') ? raw.split('@')[0] : raw;
-  const digits = withoutDomain.replace(/\D/g, '');
+  const withoutDevice = withoutDomain.split(':')[0];
+  const digits = withoutDevice.replace(/\D/g, '');
 
   if (!digits) return null;
   return `+${digits}`;
 }
 
 function toWhatsAppId(phone) {
+  const value = String(phone || '').trim();
+  if (value.endsWith('@s.whatsapp.net')) return value;
+
   const digits = String(phone || '').replace(/\D/g, '');
   if (!digits) return null;
-  return `${digits}@c.us`;
+  return `${digits}@s.whatsapp.net`;
 }
 
 module.exports = {

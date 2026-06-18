@@ -1,12 +1,30 @@
 # Seenode
 
-## Comando de inicio
+## Runtime
+
+```text
+Node.js 20
+```
+
+## Build Command
+
+```bash
+npm install
+```
+
+## Start Command
 
 ```bash
 npm start
 ```
 
-## Variables obligatorias
+## Port
+
+```text
+80
+```
+
+## Variables
 
 Configura estas variables en el panel de Seenode:
 
@@ -14,25 +32,23 @@ Configura estas variables en el panel de Seenode:
 DATABASE_URL=
 ADMIN_API_KEY=
 GEMINI_API_KEY=
+GEMINI_MODEL=gemini-1.5-flash
 HOTMART_LINK=
 LANDING_LINK=
-PORT=3000
+WHATSAPP_SESSION_PATH=.baileys_auth
+PORT=80
 NODE_ENV=production
-GEMINI_MODEL=gemini-1.5-flash
 GEMINI_TEMPERATURE=0.7
 GEMINI_MAX_OUTPUT_TOKENS=800
 MEMORY_EXPIRATION_HOURS=24
-WHATSAPP_SESSION_PATH=.wwebjs_auth
 TIMEZONE=America/La_Paz
 ```
 
-No pongas `DATABASE_URL` ni `GEMINI_API_KEY` dentro del código.
-
-## PostgreSQL
-
-El backend toma la conexión únicamente desde `DATABASE_URL`. Al iniciar, ejecuta la migración idempotente de `src/database/migrations/schema.sql`.
+No pongas `DATABASE_URL` ni `GEMINI_API_KEY` dentro del codigo.
 
 ## WhatsApp
+
+El backend usa Baileys para WhatsApp. No usa Chrome, Chromium, Puppeteer ni navegador.
 
 Para vincular WhatsApp desde el CRM:
 
@@ -41,13 +57,13 @@ Para vincular WhatsApp desde el CRM:
 3. Escanea el QR con WhatsApp.
 4. Verifica `GET /api/whatsapp/status`.
 
-Si la sesión local persiste, WhatsApp no pedirá QR en cada reinicio.
+Si la carpeta `.baileys_auth` persiste, WhatsApp no deberia pedir QR en cada reinicio.
 
-## Health check
+## Health Check
 
 ```http
 GET /api/health
 x-admin-api-key: TU_ADMIN_API_KEY
 ```
 
-Este endpoint sigue la misma protección administrativa que el resto de la API.
+Este endpoint sigue la misma proteccion administrativa que el resto de la API.

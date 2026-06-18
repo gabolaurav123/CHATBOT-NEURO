@@ -1,21 +1,29 @@
 # Chatbot Neurotraumas
 
-Backend independiente para un chatbot vendedor de Neurotraumas™ conectado a WhatsApp por QR, PostgreSQL y Gemini API. El CRM puede leer leads, conversaciones, mensajes, pagos, follow-ups, settings y controlar el bot desde endpoints protegidos.
+Backend independiente para un chatbot vendedor de Neurotraumas conectado a WhatsApp por QR, PostgreSQL y Gemini API. El CRM puede leer leads, conversaciones, mensajes, pagos, follow-ups, settings y controlar el bot desde endpoints protegidos.
 
-## Variables de entorno
+## WhatsApp Sin Chrome
+
+La conexion de WhatsApp usa Baileys (`@whiskeysockets/baileys`). No usa Chrome, Chromium, Puppeteer, `executablePath` ni flags de navegador.
+
+La sesion se guarda en `WHATSAPP_SESSION_PATH`, por defecto `.baileys_auth`, para evitar pedir QR en cada reinicio cuando el almacenamiento persiste.
+
+## Variables De Entorno
 
 Copia `.env.example` a `.env` solo en tu entorno local o configura las variables directamente en Seenode. No subas `.env` reales a GitHub.
 
-Variables críticas:
+Variables criticas:
 
-- `DATABASE_URL`: conexión PostgreSQL. Es la única fuente de conexión a base de datos.
-- `GEMINI_API_KEY`: API key de Gemini. Es la única fuente de credenciales de IA.
+- `DATABASE_URL`: conexion PostgreSQL. Es la unica fuente de conexion a base de datos.
+- `GEMINI_API_KEY`: API key de Gemini. Es la unica fuente de credenciales de IA.
 - `ADMIN_API_KEY`: clave que debe enviar el CRM en `x-admin-api-key`.
-- `HOTMART_LINK`: link de pago, también editable desde `bot_settings`.
-- `LANDING_LINK`: link de landing/video, también editable desde `bot_settings`.
-- `WHATSAPP_SESSION_PATH`: carpeta local para guardar sesión de WhatsApp.
+- `GEMINI_MODEL`: modelo de Gemini, por ejemplo `gemini-1.5-flash`.
+- `HOTMART_LINK`: link de pago, tambien editable desde `bot_settings`.
+- `LANDING_LINK`: link de landing/video, tambien editable desde `bot_settings`.
+- `WHATSAPP_SESSION_PATH`: carpeta local de sesion Baileys, recomendado `.baileys_auth`.
+- `PORT`: puerto HTTP. En Seenode usa `80`.
 
-## Instalación local
+## Instalacion Local
 
 ```bash
 npm install
@@ -30,36 +38,77 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-## Ejecución en producción
+## Produccion
 
 ```bash
-npm install --omit=dev
+npm install
 npm start
 ```
 
-El servidor escucha en `process.env.PORT || 3000`.
+El servidor escucha en `process.env.PORT || 80` y se enlaza a `0.0.0.0`.
 
-## Despliegue en Seenode
+## Deploy En Seenode
 
-1. Conecta este repositorio en Seenode.
-2. Configura `DATABASE_URL` con la URL PostgreSQL real.
-3. Configura `GEMINI_API_KEY`.
-4. Configura `ADMIN_API_KEY`.
-5. Configura `HOTMART_LINK` y `LANDING_LINK`, o actualízalos luego desde `/api/settings`.
-6. Usa `npm start` como comando de inicio.
-7. Abre `/api/whatsapp/qr` o `POST /api/whatsapp/generate-qr` desde el CRM para vincular WhatsApp.
+Runtime:
+
+```text
+Node.js 20
+```
+
+Build command:
+
+```bash
+npm install
+```
+
+Start command:
+
+```bash
+npm start
+```
+
+Port:
+
+```text
+80
+```
+
+Variables:
+
+```env
+DATABASE_URL=
+ADMIN_API_KEY=
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-1.5-flash
+HOTMART_LINK=
+LANDING_LINK=
+WHATSAPP_SESSION_PATH=.baileys_auth
+PORT=80
+NODE_ENV=production
+```
 
 ## WhatsApp QR
 
-El bot usa `whatsapp-web.js` con `LocalAuth`. La sesión se guarda en `WHATSAPP_SESSION_PATH`, por lo que no debería pedir QR en cada reinicio si el almacenamiento persiste.
-
-Endpoints:
+Endpoints del CRM:
 
 - `GET /api/whatsapp/status`
 - `GET /api/whatsapp/qr`
 - `POST /api/whatsapp/generate-qr`
 - `POST /api/whatsapp/restart`
 - `POST /api/whatsapp/logout`
+
+`POST /api/whatsapp/generate-qr` inicia Baileys, genera un QR real y lo guarda en `whatsapp_sessions.qr_code` como base64.
+
+`GET /api/whatsapp/qr` devuelve:
+
+```json
+{
+  "qr": "data:image/png;base64,...",
+  "status": "qr_pending"
+}
+```
+
+Al conectar, el backend guarda `status = connected`, `connected_phone` si esta disponible y `last_connected_at`. Al desconectar, guarda `status = disconnected` y `last_disconnected_at`.
 
 ## CRM
 
@@ -69,7 +118,7 @@ Todos los endpoints administrativos requieren:
 x-admin-api-key: TU_ADMIN_API_KEY
 ```
 
-`GET /api/health` también requiere `x-admin-api-key`.
+`GET /api/health` tambien requiere `x-admin-api-key`.
 
 Endpoints principales:
 
@@ -95,7 +144,7 @@ Endpoints principales:
 - `PATCH /api/followups/:id`
 - `POST /api/followups/:id/send-now`
 
-## Base de datos
+## Base De Datos
 
 Al iniciar, el servidor ejecuta `src/database/migrations/schema.sql` con `CREATE TABLE IF NOT EXISTS` y crea:
 
@@ -109,28 +158,28 @@ Al iniciar, el servidor ejecuta `src/database/migrations/schema.sql` con `CREATE
 - `followups`
 - `admin_actions`
 
-El teléfono normalizado (`+591...`) es el identificador principal del lead y evita duplicados.
+El telefono normalizado (`+591...`) es el identificador principal del lead y evita duplicados. Con Baileys, el numero se extrae desde `remoteJid`, por ejemplo `591XXXXXXXX@s.whatsapp.net`.
 
-## Memoria 24 horas
+## Memoria 24 Horas
 
-La memoria detallada se guarda en `conversation_memory` y se renueva por 24 horas con cada mensaje cuando `consent_24h = true`. El job `cleanExpiredMemory` corre cada hora y elimina solo memoria vencida, no leads ni mensajes comerciales básicos.
+La memoria detallada se guarda en `conversation_memory` y se renueva por 24 horas con cada mensaje cuando `consent_24h = true`. El job `cleanExpiredMemory` corre cada hora y elimina solo memoria vencida, no leads ni mensajes comerciales basicos.
 
 Si el usuario escribe `BORRAR`, `ELIMINAR DATOS` o `NO GUARDAR`, se elimina la memoria temporal y se desactiva el consentimiento de memoria.
 
-## Follow-ups
+## Follow-Ups
 
-El job `scheduledFollowUps` corre cada 5 minutos y envía follow-ups pendientes si:
+El job `scheduledFollowUps` corre cada 5 minutos y envia follow-ups pendientes si:
 
 - `scheduled_at <= NOW()`
 - `status = pending`
 - el lead no tiene `bot_paused = true`
 - el lead no tiene `human_takeover = true`
 
-Se crean follow-ups después de enviar landing y después de enviar el link de Hotmart.
+Se crean follow-ups despues de enviar landing y despues de enviar el link de Hotmart.
 
 ## Gemini API
 
-La integración está en:
+La integracion esta en:
 
 - `src/ai/geminiClient.js`
 - `src/ai/intentClassifier.js`
@@ -139,11 +188,11 @@ La integración está en:
 
 Gemini se usa en dos capas:
 
-1. Clasificación interna en JSON.
+1. Clasificacion interna en JSON.
 2. Respuesta humana controlada por reglas del backend.
 
 Si Gemini falla o no responde, el bot usa respuestas fallback y no se cae.
 
-## Seguridad conversacional
+## Seguridad Conversacional
 
-El bot no diagnostica, no promete curas, no reemplaza terapia, no inventa descuentos ni cupos y no usa urgencia falsa. Si detecta crisis emocional, autolesión o suicidio, deja de vender, pausa el bot y activa takeover humano.
+El bot no diagnostica, no promete curas, no reemplaza terapia, no inventa descuentos ni cupos y no usa urgencia falsa. Si detecta crisis emocional, autolesion o suicidio, deja de vender, pausa el bot y activa takeover humano.
