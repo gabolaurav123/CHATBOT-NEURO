@@ -365,14 +365,6 @@ function unclearMessage() {
 Podemos ir simple: ¿lo que más te pesa ahora es ansiedad, miedo, tristeza, culpa o sentir que no podés soltar algo?`;
 }
 
-function fallbackMessage(settings = {}, lead = null) {
-  const { special } = prices(settings);
-  const name = withName(lead);
-  return `Hola${name ? ` ${name}` : ''}. Gracias por escribirme.
-
-Para orientarte mejor, contame que quieres revisar primero: lo que te esta pasando, como funciona Neurotraumas, el precio especial de $${special} USD o el acceso.`;
-}
-
 function postLinkFallback(lead = null) {
   const name = withName(lead);
   return `Perfecto${name ? `, ${name}` : ''} ❤️
@@ -478,7 +470,6 @@ module.exports = {
   softCloseMessage,
   farewellMessage,
   unclearMessage,
-  fallbackMessage,
   postLinkFallback,
   paymentReportedMessage
 };

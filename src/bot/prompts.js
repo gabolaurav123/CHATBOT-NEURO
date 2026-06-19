@@ -33,21 +33,19 @@ const INTENTS = [
 
 const STAGES = [
   'inicio',
-  'video_ofrecido',
-  'video_enviado',
-  'diagnostico_orientativo',
-  'descubrimiento_emocional',
-  'pdf_ofrecido',
-  'pdf_enviado',
+  'captacion',
+  'diagnostico',
+  'datos_solicitados',
   'oferta_presentada',
-  'link_pago_enviado',
   'objecion',
-  'cierre_positivo',
-  'cierre_frio',
-  'crisis',
+  'link_pago_enviado',
   'post_link_conversacion',
   'pago_reportado',
-  'onboarding'
+  'onboarding',
+  'crisis',
+  'humano',
+  'pausado',
+  'cierre_frio'
 ];
 
 module.exports = {

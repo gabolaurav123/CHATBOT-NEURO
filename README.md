@@ -19,8 +19,7 @@ Variables criticas:
 - `ADMIN_API_KEY`: clave que debe enviar el CRM en `x-admin-api-key`.
 - `GEMINI_MODEL`: modelo de Gemini, recomendado `gemini-2.5-flash`.
 - `HOTMART_LINK`: link de pago, tambien editable desde `bot_settings`.
-- `VIDEO_LINK`: clase gratuita de 12 minutos que ofrece Marisa al inicio del flujo.
-- `PDF_LINK`: PDF gratuito que se ofrece despues del diagnostico orientativo.
+- `VIDEO_LINK` / `PDF_LINK`: opcionales. La IA solo los menciona si existen en configuracion.
 - `PRODUCT_NORMAL_PRICE`: precio normal mostrado al usuario, por defecto `360`.
 - `PRODUCT_SPECIAL_PRICE`: precio especial por este canal, por defecto `270`.
 - `WHATSAPP_SESSION_PATH`: carpeta local de sesion Baileys, recomendado `.baileys_auth`.
@@ -197,7 +196,7 @@ Al iniciar, el servidor ejecuta `src/database/migrations/schema.sql` con `CREATE
 
 `whatsapp_id` es el JID real de Baileys y es el identificador usado para enviar mensajes. `phone` solo se guarda cuando se obtiene un numero real con seguridad, por ejemplo `+59171234567`. Si Baileys entrega un `@lid`, el backend guarda `phone = null`, `whatsapp_lid = ...@lid` y `display_phone = ID WhatsApp: ...`.
 
-El flujo conversa como Marisa y avanza por etapas: bienvenida, video gratuito, diagnostico orientativo, PDF gratuito, oferta, objeciones y link oficial de Hotmart. El bot guarda en el lead si ya envio video, PDF, oferta y link para no repetirlos en bucle.
+El flujo automatico conversa como Marisa usando Gemini como unico motor conversacional. La IA decide la respuesta, la etapa y acciones como enviar Hotmart, reportar pago, pausar o activar takeover humano. El backend solo guarda estado, mensajes, memoria y ejecuta acciones tecnicas.
 
 El acceso oficial de Hotmart es:
 
@@ -231,9 +230,9 @@ La integracion esta en:
 - `src/ai/responseGenerator.js`
 - `src/ai/systemPrompt.js`
 
-Gemini se usa para redactar respuestas humanas con contexto de etapa, memoria e historial reciente. La decision de etapa se hace en el backend para evitar bucles cuando falla la IA.
+Gemini decide el turno completo: respuesta, siguiente etapa, campos del lead, memoria y acciones. El backend no mezcla plantillas comerciales ni decide textos por etapa.
 
-Usa `gemini-2.5-flash`. Si en Seenode queda configurado un modelo viejo como `gemini-1.5-flash` o `gemini-2.0-flash`, el backend lo reemplaza en runtime por `gemini-2.5-flash`. Si Gemini falla o no responde, el bot usa un fallback corto segun la etapa y no vuelve al saludo inicial.
+Usa `gemini-2.5-flash`. Si en Seenode queda configurado un modelo viejo como `gemini-1.5-flash` o `gemini-2.0-flash`, el backend lo reemplaza en runtime por `gemini-2.5-flash`. Si Gemini falla, el backend no inventa una respuesta pregrabada: activa takeover humano para evitar respuestas incoherentes.
 
 ## Seguridad Conversacional
 
