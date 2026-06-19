@@ -283,6 +283,28 @@ function result({ lead, conversation, reply, whatsappId }) {
   };
 }
 
+function aiUnavailableReply(error) {
+  const missingKey = /GEMINI_API_KEY/i.test(String(error && error.message ? error.message : error));
+
+  if (missingKey) {
+    return [
+      'Hola, gracias por escribirme.',
+      '',
+      'Tu mensaje quedo registrado, pero ahora mismo la IA no esta configurada correctamente para responderte con el contexto de Neurotraumas.',
+      '',
+      'El equipo lo revisara por aqui para no darte una respuesta automatica incorrecta.'
+    ].join('\n');
+  }
+
+  return [
+    'Hola, gracias por escribirme.',
+    '',
+    'Tu mensaje quedo registrado, pero ahora mismo la IA tuvo un problema tecnico al generar la respuesta.',
+    '',
+    'El equipo lo revisara por aqui para no darte una respuesta incorrecta.'
+  ].join('\n');
+}
+
 async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPayload }) {
   const sourceKeyword = detectInitialKeyword(body);
   const leadIdentity = identity || {
@@ -349,18 +371,22 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
       settings
     });
   } catch (error) {
-    logger.error('AI conversation turn failed; enabling human takeover', {
+    logger.error('AI conversation turn failed', {
       leadId: lead.id,
       error: error.message,
       stack: error.stack
     });
 
     const updatedLead = await leadService.updateLead(lead.id, {
-      human_takeover: true,
       notes: [lead.notes, `AI failed: ${error.message}`].filter(Boolean).join('\n').slice(0, 2000)
     });
 
-    return result({ lead: updatedLead, conversation, reply: null, whatsappId });
+    return result({
+      lead: updatedLead,
+      conversation,
+      reply: aiUnavailableReply(error),
+      whatsappId
+    });
   }
 
   console.log('AI conversation decision', {
