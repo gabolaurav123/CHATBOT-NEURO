@@ -20,7 +20,7 @@ const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   ADMIN_API_KEY: process.env.ADMIN_API_KEY,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-  GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+  GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
   GEMINI_TEMPERATURE: numberFromEnv('GEMINI_TEMPERATURE', 0.7),
   GEMINI_MAX_OUTPUT_TOKENS: numberFromEnv('GEMINI_MAX_OUTPUT_TOKENS', 800),
   BOT_NAME: process.env.BOT_NAME || 'Marisa',

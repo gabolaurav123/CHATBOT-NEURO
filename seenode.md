@@ -32,7 +32,7 @@ Configura estas variables en el panel de Seenode:
 DATABASE_URL=
 ADMIN_API_KEY=
 GEMINI_API_KEY=
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 HOTMART_LINK=https://pay.hotmart.com/T103515864E
 VIDEO_LINK=
 PDF_LINK=
@@ -48,7 +48,7 @@ MEMORY_EXPIRATION_HOURS=24
 TIMEZONE=America/La_Paz
 ```
 
-No pongas `DATABASE_URL` ni `GEMINI_API_KEY` dentro del codigo.
+No pongas `DATABASE_URL` ni `GEMINI_API_KEY` dentro del codigo. Usa `gemini-2.5-flash`; si Seenode conserva un valor viejo como `gemini-1.5-flash`, el backend lo reemplaza en runtime por `gemini-2.5-flash`.
 
 ## WhatsApp
 

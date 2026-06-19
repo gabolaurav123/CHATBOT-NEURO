@@ -1,8 +1,7 @@
 const { generateText } = require('./geminiClient');
 const { logger } = require('../utils/logger');
-const { postLinkFallback } = require('../bot/flows');
 
-function normalizeReply(value) {
+function normalizeText(value) {
   return String(value || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -11,306 +10,411 @@ function normalizeReply(value) {
     .trim();
 }
 
+function stripCodeFence(value) {
+  return String(value || '')
+    .replace(/^```(?:text|markdown)?/i, '')
+    .replace(/```$/i, '')
+    .trim();
+}
+
 function isRepeatedReply(reply, lead) {
-  const current = normalizeReply(reply);
-  const last = normalizeReply(lead && lead.last_bot_message);
+  const current = normalizeText(reply);
+  const last = normalizeText(lead && lead.last_bot_message);
   if (!current || !last) return false;
-  return current === last || current.includes(last.slice(0, 120)) || last.includes(current.slice(0, 120));
+
+  if (current === last) return true;
+  if (last.length >= 80 && current.includes(last.slice(0, 80))) return true;
+  if (current.length >= 80 && last.includes(current.slice(0, 80))) return true;
+
+  return false;
 }
 
-function contextualFallbackReply({ lead, userMessage, stage, settings }) {
-  const text = String(userMessage || '').trim();
-  const lower = text.toLowerCase();
-  const currentStage = stage || (lead && lead.funnel_stage) || 'inicio';
-  const price = settings.product_special_price || settings.product_price || 270;
+function stageLabel(stage) {
+  const labels = {
+    inicio: 'inicio',
+    video_ofrecido: 'video ofrecido',
+    video_enviado: 'video enviado',
+    diagnostico_orientativo: 'diagnostico orientativo',
+    descubrimiento_emocional: 'descubrimiento emocional',
+    pdf_ofrecido: 'PDF ofrecido',
+    pdf_enviado: 'PDF enviado',
+    programa: 'programa',
+    oferta_presentada: 'oferta presentada',
+    objecion: 'objecion',
+    link_pago_enviado: 'link de pago enviado',
+    post_link_conversacion: 'conversacion posterior al link',
+    pago_reportado: 'pago reportado',
+    cierre_frio: 'cierre',
+    crisis: 'crisis'
+  };
 
-  if (/^s[ií]$|^ok$|^dale$|^claro$/i.test(text)) {
-    if (currentStage === 'inicio' || currentStage === 'video_ofrecido') {
-      return `Perfecto ❤️ Vamos paso a paso.
-
-Para orientarte mejor, contame algo simple: ¿esto que te pasa viene desde hace mucho tiempo o empezó hace poco?`;
-    }
-
-    if (currentStage === 'diagnostico_orientativo') {
-      return `Gracias por responderme.
-
-Para ubicarte mejor, contame esto: cuando aparece lo que estás sintiendo, ¿lo notás más en la mente, con pensamientos repetitivos, o más en el cuerpo, como presión, tensión, nudo en la garganta o ansiedad?`;
-    }
-
-    if (currentStage === 'descubrimiento_emocional') {
-      return `Tiene sentido que lo sientas así ❤️
-
-Lo importante ahora es empezar a mirar qué se activa en vos y en qué momentos aparece con más fuerza.
-
-¿Querés que te comparta una guía breve para ayudarte a identificarlo con más claridad?`;
-    }
-
-    if (currentStage === 'pdf_ofrecido' || currentStage === 'pdf_enviado') {
-      return `Perfecto ❤️ Revisalo con calma.
-
-Mientras lo mirás, fijate qué parte sentís más cercana a tu caso: ansiedad, bloqueo, miedo, culpa, apego o sensación de no poder avanzar.`;
-    }
-
-    if (currentStage === 'program_intro') {
-      return `Claro ❤️ Te cuento de forma simple.
-
-Neurotraumas es un proceso de 12 semanas para comprender qué se activa dentro de vos, reconocer patrones emocionales repetidos y empezar a trabajarlos con herramientas prácticas.
-
-¿Querés que te explique qué incluye y cómo funciona?`;
-    }
-
-    if (currentStage === 'oferta_presentada') {
-      return `Perfecto ❤️
-
-Si sentís que esto conecta con lo que venís viviendo, puedo pasarte el link seguro de Hotmart para que lo revises con calma y veas las opciones de pago.`;
-    }
-
-    if (currentStage === 'link_pago_enviado' || currentStage === 'post_link_conversacion') {
-      return `Perfecto ❤️ Revisalo tranquila.
-
-Si al entrar te surge alguna duda sobre el pago, el acceso o el contenido, me escribís por acá y te ayudo.`;
-    }
-  }
-
-  if (/precio|cu[aá]nto|costo|valor|inversi[oó]n/.test(lower)) {
-    return `Claro. El programa tiene un valor normal de $360 USD, pero por este canal está con precio especial de $${price} USD.
-
-Incluye 12 semanas de entrenamiento, clases en vivo, acceso de por vida, grupo privado, materiales, seguimiento, certificado, actualizaciones y garantía de 14 días.
-
-¿Querés que te cuente cómo está organizado por dentro?`;
-  }
-
-  if (/gracias|ok|perfecto|lo veo|despu[eé]s/.test(lower)) {
-    return `Perfecto ❤️ Revisalo con calma.
-
-Si te surge una duda concreta sobre el contenido, el acceso o el proceso, me escribís por acá y lo vemos paso a paso.`;
-  }
-
-  if (currentStage === 'inicio' || currentStage === 'video_ofrecido') {
-    return `Gracias por escribirlo.
-
-Antes de hablarte del programa, quiero entender un poquito mejor qué estás buscando para no darte información genérica.
-
-¿Lo que más te pesa hoy es ansiedad, bloqueo, pensamientos repetitivos, relaciones difíciles o sentir que no podés avanzar?`;
-  }
-
-  if (currentStage === 'diagnostico_orientativo') {
-    return `Gracias por contármelo.
-
-Eso que mencionás merece mirarse con cuidado, porque muchas veces no es solo una idea: también hay una reacción emocional o corporal que se activa.
-
-¿Sentís que esto viene de hace tiempo o empezó después de algo específico?`;
-  }
-
-  if (currentStage === 'descubrimiento_emocional') {
-    return `Lo que decís es importante.
-
-A veces el cuerpo sigue reaccionando como si tuviera que protegerte, aunque racionalmente sepas que hoy la situación es distinta.
-
-¿Sentís que esta reacción aparece más en relaciones, en momentos de soledad o cuando recordás algo específico?`;
-  }
-
-  if (currentStage === 'pdf_ofrecido' || currentStage === 'pdf_enviado') {
-    return `Vamos con calma ❤️
-
-Lo importante no es entenderlo todo de golpe, sino empezar a reconocer qué se repite en vos y cuándo se activa.
-
-¿Qué parte sentís más presente ahora: ansiedad, bloqueo, culpa, apego, miedo o pensamientos repetitivos?`;
-  }
-
-  if (currentStage === 'program_intro' || currentStage === 'oferta_presentada') {
-    return `Te cuento de forma clara.
-
-Neurotraumas es un proceso de 12 semanas para comprender y trabajar respuestas emocionales que se repiten, como ansiedad, bloqueo, apego, miedo, culpa o autosabotaje.
-
-Incluye clases, ejercicios, acompañamiento, acceso de por vida y garantía de 14 días. El precio especial por este canal es de $${price} USD.
-
-¿Querés que te explique qué incluye paso a paso?`;
-  }
-
-  if (currentStage === 'link_pago_enviado' || currentStage === 'post_link_conversacion') {
-    return `Entiendo.
-
-Como ya tenés el acceso de Hotmart, puedo ayudarte a resolver cualquier duda concreta antes de que decidas: pago, contenido, acceso, garantía o si esto es para tu caso.
-
-¿Qué parte querés revisar primero?`;
-  }
-
-  return `Gracias por escribirlo.
-
-Para orientarte bien y no responderte en automático, contame qué parte querés revisar primero: lo que te pasa, cómo funciona Neurotraumas, el precio o el acceso.`;
+  return labels[stage] || stage || 'inicio';
 }
 
-async function generateHumanReply({ lead, memory, history, userMessage, stage, settings }) {
-  const prompt = `Genera una respuesta corta, natural y empática para WhatsApp como Marisa, guía del programa Neurotraumas.
-
-Contexto:
-- Producto: ${settings.product_name || 'Neurotraumas'}.
-- Precio normal: USD $${settings.product_normal_price || 360}.
-- Precio especial por este canal: USD $${settings.product_special_price || settings.product_price || 270}.
-- Video gratuito: ${settings.video_link || 'sin enlace disponible; no lo menciones al usuario'}.
-- PDF gratuito: ${settings.pdf_link || 'sin enlace disponible; no lo menciones al usuario'}.
-- Hotmart: ${settings.hotmart_link || 'https://pay.hotmart.com/T103515864E'}.
-- Etapa actual: ${stage || 'inicio'}.
-- No prometas curas, no diagnostiques, no reemplaces terapia, no inventes descuentos, no inventes cupos.
-- No reinicies el flujo.
-- No repitas el mismo mensaje.
-- Si ya se envió video, PDF, oferta o link, no lo reenvíes salvo que el usuario lo pida.
-- Si hay crisis emocional, detén la venta y prioriza seguridad.
-- Haz una sola pregunta al final.
-- Mantén el objetivo comercial, pero sin presión agresiva.
-
-Lead:
-${JSON.stringify(lead || {}, null, 2)}
-
-Memoria:
-${JSON.stringify(memory || {}, null, 2)}
-
-Historial reciente:
-${JSON.stringify(history || [], null, 2)}
-
-Mensaje del usuario:
-${userMessage}`;
-
-  try {
-    const reply = await generateText({
-      prompt,
-      temperature: 0.7,
-      maxOutputTokens: 350
-    });
-
-    if (!reply || !reply.trim() || isRepeatedReply(reply, lead)) {
-      return contextualFallbackReply({ lead, userMessage, stage, settings });
-    }
-
-    return reply.trim();
-  } catch (error) {
-    logger.warn('Gemini human reply failed; using contextual fallback', { error: error.message, stage });
-    return contextualFallbackReply({ lead, userMessage, stage, settings });
-  }
+function priceFromSettings(settings = {}) {
+  return settings.product_special_price || settings.product_price || 270;
 }
 
-async function generateStageReply({
+function hotmartFromSettings(settings = {}) {
+  return settings.hotmart_link || 'https://pay.hotmart.com/T103515864E';
+}
+
+function deterministicFallback({ stage, intent, userMessage, settings, lastBotMessage, requiredFacts }) {
+  const text = normalizeText(userMessage);
+  const price = priceFromSettings(settings);
+  const hotmart = hotmartFromSettings(settings);
+
+  if (intent === 'crisis') {
+    return [
+      'Siento mucho que estes pasando por esto.',
+      '',
+      'Ahora lo mas importante es tu seguridad. Por favor busca a una persona de confianza y contacta emergencias o una linea de ayuda de tu pais si sientes que puedes hacerte dano.',
+      '',
+      'No tienes que atravesar esto a solas.'
+    ].join('\n');
+  }
+
+  if (intent === 'delete') {
+    return 'Entiendo. Voy a borrar la memoria temporal de esta conversacion para no seguir usando ese contexto.';
+  }
+
+  if (intent === 'stop') {
+    return 'Esta bien, lo respeto. No voy a seguir insistiendo. Si en otro momento quieres retomar, puedes escribirme por aqui.';
+  }
+
+  if (intent === 'human') {
+    return 'Claro. Dejo esta conversacion para que una persona del equipo pueda ayudarte directamente.';
+  }
+
+  if (intent === 'bot_identity') {
+    return 'Soy el asistente del equipo de Marisa. Estoy aqui para orientarte con Neurotraumas y responder tus dudas de forma clara.';
+  }
+
+  if (intent === 'payment_reported') {
+    return 'Perfecto. Enviame la confirmacion de Hotmart o el correo con el que hiciste la inscripcion para revisar el acceso.';
+  }
+
+  if ((intent === 'info' || intent === 'greeting' || intent === 'inicio') && (stage === 'inicio' || stage === 'video_ofrecido')) {
+    return [
+      'Hola, gracias por escribirme.',
+      '',
+      'Antes de darte informacion general sobre Neurotraumas, quiero entender un poco que estas buscando para orientarte mejor.',
+      '',
+      'Que sientes que hoy te esta afectando mas: ansiedad, autosabotaje, pensamientos repetitivos, relaciones dificiles, bloqueo o solo quieres informacion?'
+    ].join('\n');
+  }
+
+  if (intent === 'payment_link') {
+    return [
+      'Claro. Te dejo el link seguro de Hotmart para revisar la inscripcion:',
+      '',
+      hotmart,
+      '',
+      `El precio especial por este canal es de $${price} USD y tienes garantia de 14 dias.`,
+      '',
+      'Si te surge una duda sobre pago, acceso o contenido, escribeme por aqui.'
+    ].join('\n');
+  }
+
+  if (intent === 'send_video') {
+    if (settings.video_link) {
+      return [
+        'Perfecto. Te dejo la clase corta para que la mires con calma:',
+        '',
+        settings.video_link,
+        '',
+        'Cuando la termines, cuentame que parte se parece mas a lo que vienes viviendo.'
+      ].join('\n');
+    }
+
+    return 'Perfecto. Avancemos igual: para orientarte mejor, esto que te pasa viene desde hace mucho tiempo o empezo hace poco?';
+  }
+
+  if (intent === 'offer_pdf') {
+    return 'Eso que cuentas tiene sentido con lo que venimos revisando. Tengo un PDF corto que puede ayudarte a ordenar mejor estas ideas. Quieres que te lo envie?';
+  }
+
+  if (intent === 'send_pdf') {
+    if (settings.pdf_link) {
+      return [
+        'Claro. Te dejo el PDF para que lo revises con calma:',
+        '',
+        settings.pdf_link,
+        '',
+        'Cuando lo veas, cuentame que parte conecto mas con tu caso.'
+      ].join('\n');
+    }
+
+    return 'Te acompano igual desde aqui. Para seguir ubicando tu caso, que sientes que mas se repite en ti: ansiedad, bloqueo, miedo, culpa o pensamientos repetitivos?';
+  }
+
+  if (intent === 'price') {
+    return [
+      `El valor normal es de $360 USD y por este canal tienes precio especial de $${price} USD.`,
+      '',
+      'Incluye 12 semanas, clases en vivo, acceso de por vida en Hotmart, grupo privado, materiales, seguimiento, certificado, actualizaciones y garantia de 14 dias.',
+      '',
+      'Quieres que te explique como esta organizado por dentro?'
+    ].join('\n');
+  }
+
+  if (stage === 'inicio') {
+    if (text === 'si' || text === 'ok' || text === 'dale') {
+      return [
+        'Perfecto. Vamos paso a paso.',
+        '',
+        'Para orientarte mejor, dime que es lo que mas te pesa hoy: ansiedad, bloqueo, pensamientos repetitivos, relaciones dificiles o sentir que no puedes avanzar?'
+      ].join('\n');
+    }
+
+    return [
+      'Hola, gracias por escribirme.',
+      '',
+      'Antes de enviarte informacion general, quiero entender que estas buscando para orientarte mejor.',
+      '',
+      'Que sientes que hoy te esta afectando mas?'
+    ].join('\n');
+  }
+
+  if (stage === 'video_ofrecido') {
+    if (text === 'si' || text === 'ok' || text === 'dale' || text === 'claro') {
+      return [
+        'Perfecto, avancemos.',
+        '',
+        'Antes de darte mas informacion, quiero ubicar tu caso: esto que te pasa viene desde hace mucho tiempo o empezo hace poco?'
+      ].join('\n');
+    }
+
+    return 'Te respondo desde lo que me dices. Lo importante es entender primero que estas viviendo, y luego vemos que recurso de Neurotraumas te puede servir.';
+  }
+
+  if (stage === 'video_enviado') {
+    return 'Miralo con calma. Cuando lo termines, cuentame que parte se parece a lo que vienes viviendo.';
+  }
+
+  if (stage === 'diagnostico_orientativo') {
+    return [
+      'Gracias por contarmelo.',
+      '',
+      'Para entenderlo mejor: esto viene de hace mucho tiempo o aparecio despues de algo especifico? Y cuando se activa, lo notas mas en la mente o en el cuerpo?'
+    ].join('\n');
+  }
+
+  if (stage === 'descubrimiento_emocional') {
+    return [
+      'Lo que cuentas puede ser muy agotador.',
+      '',
+      'A veces el sistema nervioso sigue reaccionando como si tuviera que protegerte, aunque una parte de ti quiera estar tranquila.',
+      '',
+      'Sientes que esto se activa mas en relaciones, en soledad o cuando aparece algun recuerdo?'
+    ].join('\n');
+  }
+
+  if (stage === 'pdf_ofrecido' || stage === 'pdf_enviado') {
+    return 'Vamos con calma. De lo que has visto hasta ahora, que parte sientes mas presente en ti: ansiedad, bloqueo, culpa, miedo, apego o pensamientos repetitivos?';
+  }
+
+  if (stage === 'programa') {
+    return [
+      'Neurotraumas es un proceso de 12 semanas para entender y trabajar respuestas emocionales que se repiten, como ansiedad, bloqueo, miedo, apego, culpa o autosabotaje.',
+      '',
+      'La idea es que puedas comprender que se activa en ti y trabajar con herramientas practicas, paso a paso y con acompanamiento.',
+      '',
+      'Quieres que te explique que incluye y como esta organizado por dentro?'
+    ].join('\n');
+  }
+
+  if (stage === 'oferta_presentada') {
+    return [
+      'Neurotraumas es un proceso de 12 semanas para entender y trabajar respuestas emocionales que se repiten, como ansiedad, bloqueo, miedo, apego, culpa o autosabotaje.',
+      '',
+      `El precio especial por este canal es de $${price} USD, con acceso de por vida en Hotmart y garantia de 14 dias.`,
+      '',
+      'Quieres que te explique que incluye o prefieres revisar el link de Hotmart?'
+    ].join('\n');
+  }
+
+  if (stage === 'link_pago_enviado' || stage === 'post_link_conversacion') {
+    return 'Como ya tienes el acceso de Hotmart, puedo ayudarte con una duda concreta: pago, contenido, acceso, garantia o si esto aplica para tu caso. Que parte quieres revisar?';
+  }
+
+  if (intent === 'thanks' || intent === 'farewell') {
+    return 'Perfecto. Revisalo con calma y, si despues te surge una duda concreta, me escribes por aqui.';
+  }
+
+  if (lastBotMessage) {
+    return 'Para avanzar sin repetir lo mismo, tomo lo ultimo que me dices. Que quieres revisar primero: lo que te esta pasando, como funciona Neurotraumas, el precio o el acceso?';
+  }
+
+  if (requiredFacts) {
+    return `Gracias por escribirme. Para avanzar con precision, tomo este dato: ${requiredFacts}`;
+  }
+
+  return 'Gracias por escribirme. Cuentame que quieres revisar primero: lo que te esta pasando, como funciona Neurotraumas, el precio o el acceso.';
+}
+
+async function generateNeuroReply({
   lead,
   memory,
   history,
   userMessage,
   stage,
-  settings,
+  nextStage,
+  intent,
   objective,
-  fallback
+  requiredFacts,
+  settings = {}
 }) {
-  const prompt = `Redacta la respuesta de WhatsApp como Marisa para esta etapa exacta del flujo Neurotraumas.
+  const lastBotMessage = lead && lead.last_bot_message ? lead.last_bot_message : '';
+  const fallback = deterministicFallback({
+    stage: nextStage || stage,
+    intent,
+    userMessage,
+    settings,
+    lastBotMessage,
+    requiredFacts
+  });
 
-Mensaje del usuario:
+  const prompt = `Eres Marisa, guia humana y clara de Neurotraumas.
+
+Responde SOLO con el mensaje final para WhatsApp. No expliques tu razonamiento.
+
+MENSAJE ACTUAL DEL USUARIO:
 ${userMessage}
 
-Etapa que debe respetarse:
-${stage || 'inicio'}
+ETAPA ACTUAL: ${stageLabel(stage)}
+SIGUIENTE ETAPA: ${stageLabel(nextStage)}
+INTENCION DETECTADA: ${intent || 'otro'}
 
-Objetivo de esta respuesta:
-${objective}
+OBJETIVO EXACTO DE ESTA RESPUESTA:
+${objective || 'Responder al usuario de forma natural y avanzar la conversacion sin repetir mensajes anteriores.'}
 
-Reglas obligatorias:
-- Responde directamente a lo que el usuario acaba de decir.
-- No reinicies la conversación.
-- No repitas el último mensaje del bot.
-- No copies literalmente plantillas ni mensajes previos.
-- No mandes Hotmart salvo que el objetivo diga explícitamente que corresponde enviar el link de pago.
-- Si el usuario solo dice "sí", interpreta ese "sí" según la etapa actual.
-- Avanza solo un paso del flujo.
-- Máximo una pregunta al final, salvo diagnóstico donde puedes hacer dos.
-- Tono: Marisa, cálida, humana, clara y contenedora.
-- No prometas curas, no diagnostiques y no digas que reemplaza terapia.
-- No inventes descuentos, cupos ni urgencia falsa.
-- Precio normal: USD $${settings.product_normal_price || 360}.
-- Precio especial: USD $${settings.product_special_price || settings.product_price || 270}.
-- Video gratuito: ${settings.video_link || 'sin enlace disponible; no lo menciones al usuario'}.
-- PDF gratuito: ${settings.pdf_link || 'sin enlace disponible; no lo menciones al usuario'}.
-- Hotmart: ${settings.hotmart_link || 'https://pay.hotmart.com/T103515864E'}.
+DATOS REALES DEL PROGRAMA:
+- Nombre: Neurotraumas.
+- Persona/marca: Marisa.
+- Duracion: 12 semanas.
+- Precio normal: $360 USD.
+- Precio especial por este canal: $${priceFromSettings(settings)} USD.
+- Plataforma de pago: Hotmart.
+- Acceso de por vida.
+- Garantia: 14 dias.
+- Incluye clases en vivo, grupo privado, material practico, ejercicios, 2 lives grupales de seguimiento, certificado y actualizaciones.
+- Link de video gratuito: ${settings.video_link || 'NO DISPONIBLE; no inventes enlace y no menciones configuracion interna'}.
+- Link de PDF gratuito: ${settings.pdf_link || 'NO DISPONIBLE; no inventes enlace y no menciones configuracion interna'}.
+- Link Hotmart: ${hotmartFromSettings(settings)}.
 
-Último mensaje del bot:
-${lead && lead.last_bot_message ? lead.last_bot_message : 'Sin mensaje previo'}
+REGLAS OBLIGATORIAS:
+- Responde a lo que el usuario acaba de decir, aunque sea "si", "no", "hola", "1" o una duda corta.
+- Si el usuario dice "si", interpreta ese "si" segun la etapa actual. Nunca vuelvas al saludo inicial por un "si".
+- No reinicies la conversacion.
+- No repitas el ultimo mensaje del bot.
+- No uses la frase "te leo" ni corazones como respuesta comodin.
+- No uses plantillas literales ni mensajes largos de bienvenida si ya hubo conversacion.
+- No vendas ni mandes Hotmart salvo que el objetivo lo pida o el usuario pida comprar/pagar/link.
+- Si mandas Hotmart, incluye el link exacto y el precio especial.
+- Si no toca vender, conversa, orienta y haz una sola pregunta util al final.
+- En diagnostico puedes hacer maximo dos preguntas.
+- Tono: humano, cercano, sobrio, sin presion.
+- No prometas curas.
+- No diagnostiques clinicamente.
+- No inventes cupos, urgencia falsa ni descuentos.
+- No digas que reemplaza terapia.
+- Si faltan links de video o PDF, no digas que faltan y no menciones CRM/configuracion.
 
-Lead:
-${JSON.stringify(lead || {}, null, 2)}
+DATOS OBLIGATORIOS PARA INCLUIR SI CORRESPONDEN:
+${requiredFacts || 'Ninguno.'}
 
-Memoria:
+ULTIMO MENSAJE DEL BOT:
+${lastBotMessage || 'Sin mensaje previo'}
+
+MEMORIA:
 ${JSON.stringify(memory || {}, null, 2)}
 
-Historial reciente:
+HISTORIAL RECIENTE:
 ${JSON.stringify(history || [], null, 2)}
 
-Contenido mínimo que debe cubrir si aplica, pero sin copiarlo literal:
-${fallback || ''}`;
+Si Gemini no puede responder bien, la salida debe ser similar en intencion a este fallback, pero no lo copies literal:
+${fallback}`;
 
   try {
-    const reply = await generateText({
+    const reply = stripCodeFence(await generateText({
       prompt,
-      temperature: 0.85,
-      maxOutputTokens: 450
-    });
+      model: settings.gemini_model,
+      temperature: 0.8,
+      maxOutputTokens: 550
+    }));
 
-    if (!reply || !reply.trim() || isRepeatedReply(reply, lead)) {
-      return contextualFallbackReply({ lead, userMessage, stage, settings });
+    if (!reply || isRepeatedReply(reply, lead) || normalizeText(reply) === 'te leo' || /te leo\s*[\u2764\uFE0F]*/i.test(reply)) {
+      return fallback;
     }
 
-    return reply.trim();
+    return reply;
   } catch (error) {
-    logger.warn('Gemini stage reply failed; using contextual fallback', { error: error.message, stage });
-    return contextualFallbackReply({ lead, userMessage, stage, settings });
+    logger.warn('Gemini reply failed; using deterministic fallback', {
+      error: error.message,
+      stage,
+      nextStage,
+      intent
+    });
+    return fallback;
   }
+}
+
+async function generateHumanReply({ lead, memory, history, userMessage, stage, settings }) {
+  return generateNeuroReply({
+    lead,
+    memory,
+    history,
+    userMessage,
+    stage,
+    nextStage: stage,
+    intent: 'otro',
+    objective: 'Responder el ultimo mensaje del usuario de forma natural, sin reiniciar el flujo y sin repetir mensajes anteriores.',
+    settings
+  });
+}
+
+async function generateStageReply({ lead, memory, history, userMessage, stage, settings, objective, fallback }) {
+  return generateNeuroReply({
+    lead,
+    memory,
+    history,
+    userMessage,
+    stage,
+    nextStage: stage,
+    intent: 'etapa',
+    objective,
+    requiredFacts: fallback,
+    settings
+  });
+}
+
+function contextualFallbackReply({ lead, userMessage, stage, settings }) {
+  return deterministicFallback({
+    stage,
+    intent: 'otro',
+    userMessage,
+    settings,
+    lastBotMessage: lead && lead.last_bot_message
+  });
 }
 
 async function generatePostLinkReply({ lead, memory, history, userMessage, settings }) {
-  const hotmartLink = settings.hotmart_link || 'https://pay.hotmart.com/T103515864E';
-  const prompt = `Estás hablando con una persona que ya recibió el link de pago de Neurotraumas.
-
-Tu objetivo es ayudarle a resolver dudas, reducir objeciones y acompañarla a tomar la decisión de inscribirse. No reinicies el flujo. No vuelvas a preguntar todo el diagnóstico. Usa lo que ya sabes del lead: dolor principal, urgencia, objeción, nombre y etapa.
-
-Reglas:
-- Responde de forma humana, breve, clara y persuasiva.
-- Si pregunta cómo pagar, reenvía este link oficial: ${hotmartLink}
-- Si solo dice ok, gracias, lo veo, después te digo o algo de cierre, responde suave y NO reenvíes el link.
-- Si duda por precio, tiempo o confianza, responde la objeción.
-- Si dice que ya pagó, pide confirmación o comprobante.
-- No prometas curas.
-- No diagnostiques.
-- No digas que reemplaza terapia.
-- No inventes descuentos.
-- No inventes cupos.
-
-Lead:
-${JSON.stringify(lead || {}, null, 2)}
-
-Memoria:
-${JSON.stringify(memory || {}, null, 2)}
-
-Historial reciente:
-${JSON.stringify(history || [], null, 2)}
-
-Mensaje del usuario:
-${userMessage}`;
-
-  try {
-    const reply = await generateText({
-      prompt,
-      temperature: 0.7,
-      maxOutputTokens: 350
-    });
-
-    if (!reply || !reply.trim() || isRepeatedReply(reply, lead)) {
-      return contextualFallbackReply({ lead, userMessage, stage: 'post_link_conversacion', settings });
-    }
-
-    return reply.trim();
-  } catch (error) {
-    logger.warn('Gemini post-link reply failed; using contextual fallback', { error: error.message });
-    return postLinkFallback(lead, hotmartLink);
-  }
+  return generateNeuroReply({
+    lead,
+    memory,
+    history,
+    userMessage,
+    stage: 'post_link_conversacion',
+    nextStage: 'post_link_conversacion',
+    intent: 'post_link',
+    objective: 'Responder la duda actual despues de haber enviado el link de Hotmart. No reenvies el link salvo que el usuario lo pida.',
+    settings
+  });
 }
 
 module.exports = {
+  generateNeuroReply,
   generateHumanReply,
   generateStageReply,
   contextualFallbackReply,

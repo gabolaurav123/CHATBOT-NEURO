@@ -17,7 +17,7 @@ Variables criticas:
 - `DATABASE_URL`: conexion PostgreSQL. Es la unica fuente de conexion a base de datos.
 - `GEMINI_API_KEY`: API key de Gemini. Es la unica fuente de credenciales de IA.
 - `ADMIN_API_KEY`: clave que debe enviar el CRM en `x-admin-api-key`.
-- `GEMINI_MODEL`: modelo de Gemini, por ejemplo `gemini-1.5-flash`.
+- `GEMINI_MODEL`: modelo de Gemini, recomendado `gemini-2.5-flash`.
 - `HOTMART_LINK`: link de pago, tambien editable desde `bot_settings`.
 - `VIDEO_LINK`: clase gratuita de 12 minutos que ofrece Marisa al inicio del flujo.
 - `PDF_LINK`: PDF gratuito que se ofrece despues del diagnostico orientativo.
@@ -82,7 +82,7 @@ Variables:
 DATABASE_URL=
 ADMIN_API_KEY=
 GEMINI_API_KEY=
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 GEMINI_TEMPERATURE=0.7
 GEMINI_MAX_OUTPUT_TOKENS=800
 HOTMART_LINK=https://pay.hotmart.com/T103515864E
@@ -231,12 +231,9 @@ La integracion esta en:
 - `src/ai/responseGenerator.js`
 - `src/ai/systemPrompt.js`
 
-Gemini se usa en dos capas:
+Gemini se usa para redactar respuestas humanas con contexto de etapa, memoria e historial reciente. La decision de etapa se hace en el backend para evitar bucles cuando falla la IA.
 
-1. Clasificacion interna en JSON.
-2. Respuesta humana controlada por reglas del backend.
-
-Si Gemini falla o no responde, el bot usa respuestas fallback y no se cae.
+Usa `gemini-2.5-flash`. Si en Seenode queda configurado un modelo viejo como `gemini-1.5-flash` o `gemini-2.0-flash`, el backend lo reemplaza en runtime por `gemini-2.5-flash`. Si Gemini falla o no responde, el bot usa un fallback corto segun la etapa y no vuelve al saludo inicial.
 
 ## Seguridad Conversacional
 

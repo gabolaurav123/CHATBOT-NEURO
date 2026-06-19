@@ -94,7 +94,7 @@ function videoWaitingMessage() {
 
 Y cuando lo termines, contame si hubo alguna parte que te hizo sentido o si conectó con algo que venís viviendo.
 
-Te leo tranquila por acá.`;
+Cuando lo termines, contame que parte te hizo sentido.`;
 }
 
 function diagnosticIntroMessage() {
@@ -366,7 +366,11 @@ Podemos ir simple: ¿lo que más te pesa ahora es ansiedad, miedo, tristeza, cul
 }
 
 function fallbackMessage(settings = {}, lead = null) {
-  return firstMessage(settings, lead);
+  const { special } = prices(settings);
+  const name = withName(lead);
+  return `Hola${name ? ` ${name}` : ''}. Gracias por escribirme.
+
+Para orientarte mejor, contame que quieres revisar primero: lo que te esta pasando, como funciona Neurotraumas, el precio especial de $${special} USD o el acceso.`;
 }
 
 function postLinkFallback(lead = null) {
