@@ -63,9 +63,7 @@ function videoSentMessage(settings = {}) {
   const link = videoLink(settings);
 
   if (!link) {
-    return `Perfecto ❤️
-
-El video gratuito todavía no está configurado en el CRM, pero igual puedo orientarte por acá con mucho cuidado.
+    return `Perfecto ❤️ Vamos paso a paso.
 
 Para conocerte mejor, te hago dos preguntitas:
 
@@ -172,8 +170,6 @@ function pdfSentMessage(settings = {}) {
 
   if (!link) {
     return `Claro ❤️
-
-El PDF gratuito todavía no está configurado en el CRM, pero puedo seguir orientándote por acá.
 
 Lo importante ahora es que empieces a reconocer cómo reacciona tu cuerpo y qué situaciones activan esa respuesta.
 
