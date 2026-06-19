@@ -1,30 +1,74 @@
 const { generateText } = require('./geminiClient');
+const { logger } = require('../utils/logger');
 const { postLinkFallback } = require('../bot/flows');
+
+function normalizeReply(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isRepeatedReply(reply, lead) {
+  const current = normalizeReply(reply);
+  const last = normalizeReply(lead && lead.last_bot_message);
+  if (!current || !last) return false;
+  return current === last || current.includes(last.slice(0, 120)) || last.includes(current.slice(0, 120));
+}
 
 function contextualFallbackReply({ lead, userMessage, stage, settings }) {
   const text = String(userMessage || '').trim();
   const lower = text.toLowerCase();
+  const currentStage = stage || (lead && lead.funnel_stage) || 'inicio';
   const price = settings.product_special_price || settings.product_price || 270;
 
   if (/^s[ií]$|^ok$|^dale$|^claro$/i.test(text)) {
-    if (stage === 'video_ofrecido' || stage === 'inicio') {
+    if (currentStage === 'inicio' || currentStage === 'video_ofrecido') {
       return `Perfecto ❤️ Vamos paso a paso.
 
 Para orientarte mejor, contame algo simple: ¿esto que te pasa viene desde hace mucho tiempo o empezó hace poco?`;
     }
 
-    if (stage === 'pdf_ofrecido') {
-      return `Perfecto ❤️ Te acompaño con eso.
+    if (currentStage === 'diagnostico_orientativo') {
+      return `Gracias por responderme.
 
-Mientras revisás el material, fijate especialmente si aparece ansiedad, bloqueo, culpa, miedo o una reacción fuerte en el cuerpo. ¿Cuál de esas sentís más cercana a tu caso?`;
+Para ubicarte mejor, contame esto: cuando aparece lo que estás sintiendo, ¿lo notás más en la mente, con pensamientos repetitivos, o más en el cuerpo, como presión, tensión, nudo en la garganta o ansiedad?`;
     }
 
-    if (stage === 'program_intro') {
+    if (currentStage === 'descubrimiento_emocional') {
+      return `Tiene sentido que lo sientas así ❤️
+
+Lo importante ahora es empezar a mirar qué se activa en vos y en qué momentos aparece con más fuerza.
+
+¿Querés que te comparta una guía breve para ayudarte a identificarlo con más claridad?`;
+    }
+
+    if (currentStage === 'pdf_ofrecido' || currentStage === 'pdf_enviado') {
+      return `Perfecto ❤️ Revisalo con calma.
+
+Mientras lo mirás, fijate qué parte sentís más cercana a tu caso: ansiedad, bloqueo, miedo, culpa, apego o sensación de no poder avanzar.`;
+    }
+
+    if (currentStage === 'program_intro') {
       return `Claro ❤️ Te cuento de forma simple.
 
 Neurotraumas es un proceso de 12 semanas para comprender qué se activa dentro de vos, reconocer patrones emocionales repetidos y empezar a trabajarlos con herramientas prácticas.
 
 ¿Querés que te explique qué incluye y cómo funciona?`;
+    }
+
+    if (currentStage === 'oferta_presentada') {
+      return `Perfecto ❤️
+
+Si sentís que esto conecta con lo que venís viviendo, puedo pasarte el link seguro de Hotmart para que lo revises con calma y veas las opciones de pago.`;
+    }
+
+    if (currentStage === 'link_pago_enviado' || currentStage === 'post_link_conversacion') {
+      return `Perfecto ❤️ Revisalo tranquila.
+
+Si al entrar te surge alguna duda sobre el pago, el acceso o el contenido, me escribís por acá y te ayudo.`;
     }
   }
 
@@ -42,9 +86,59 @@ Incluye 12 semanas de entrenamiento, clases en vivo, acceso de por vida, grupo p
 Si te surge una duda concreta sobre el contenido, el acceso o el proceso, me escribís por acá y lo vemos paso a paso.`;
   }
 
-  return `Te leo ❤️
+  if (currentStage === 'inicio' || currentStage === 'video_ofrecido') {
+    return `Gracias por escribirlo.
 
-Para responderte bien y no darte algo genérico, contame un poquito más: ¿qué es lo que más te está pesando ahora con esto?`;
+Antes de hablarte del programa, quiero entender un poquito mejor qué estás buscando para no darte información genérica.
+
+¿Lo que más te pesa hoy es ansiedad, bloqueo, pensamientos repetitivos, relaciones difíciles o sentir que no podés avanzar?`;
+  }
+
+  if (currentStage === 'diagnostico_orientativo') {
+    return `Gracias por contármelo.
+
+Eso que mencionás merece mirarse con cuidado, porque muchas veces no es solo una idea: también hay una reacción emocional o corporal que se activa.
+
+¿Sentís que esto viene de hace tiempo o empezó después de algo específico?`;
+  }
+
+  if (currentStage === 'descubrimiento_emocional') {
+    return `Lo que decís es importante.
+
+A veces el cuerpo sigue reaccionando como si tuviera que protegerte, aunque racionalmente sepas que hoy la situación es distinta.
+
+¿Sentís que esta reacción aparece más en relaciones, en momentos de soledad o cuando recordás algo específico?`;
+  }
+
+  if (currentStage === 'pdf_ofrecido' || currentStage === 'pdf_enviado') {
+    return `Vamos con calma ❤️
+
+Lo importante no es entenderlo todo de golpe, sino empezar a reconocer qué se repite en vos y cuándo se activa.
+
+¿Qué parte sentís más presente ahora: ansiedad, bloqueo, culpa, apego, miedo o pensamientos repetitivos?`;
+  }
+
+  if (currentStage === 'program_intro' || currentStage === 'oferta_presentada') {
+    return `Te cuento de forma clara.
+
+Neurotraumas es un proceso de 12 semanas para comprender y trabajar respuestas emocionales que se repiten, como ansiedad, bloqueo, apego, miedo, culpa o autosabotaje.
+
+Incluye clases, ejercicios, acompañamiento, acceso de por vida y garantía de 14 días. El precio especial por este canal es de $${price} USD.
+
+¿Querés que te explique qué incluye paso a paso?`;
+  }
+
+  if (currentStage === 'link_pago_enviado' || currentStage === 'post_link_conversacion') {
+    return `Entiendo.
+
+Como ya tenés el acceso de Hotmart, puedo ayudarte a resolver cualquier duda concreta antes de que decidas: pago, contenido, acceso, garantía o si esto es para tu caso.
+
+¿Qué parte querés revisar primero?`;
+  }
+
+  return `Gracias por escribirlo.
+
+Para orientarte bien y no responderte en automático, contame qué parte querés revisar primero: lo que te pasa, cómo funciona Neurotraumas, el precio o el acceso.`;
 }
 
 async function generateHumanReply({ lead, memory, history, userMessage, stage, settings }) {
@@ -85,10 +179,13 @@ ${userMessage}`;
       maxOutputTokens: 350
     });
 
-    return reply && reply.trim()
-      ? reply.trim()
-      : contextualFallbackReply({ lead, userMessage, stage, settings });
+    if (!reply || !reply.trim() || isRepeatedReply(reply, lead)) {
+      return contextualFallbackReply({ lead, userMessage, stage, settings });
+    }
+
+    return reply.trim();
   } catch (error) {
+    logger.warn('Gemini human reply failed; using contextual fallback', { error: error.message, stage });
     return contextualFallbackReply({ lead, userMessage, stage, settings });
   }
 }
@@ -154,10 +251,14 @@ ${fallback || ''}`;
       maxOutputTokens: 450
     });
 
-    if (!reply || !reply.trim()) return fallback;
+    if (!reply || !reply.trim() || isRepeatedReply(reply, lead)) {
+      return contextualFallbackReply({ lead, userMessage, stage, settings });
+    }
+
     return reply.trim();
   } catch (error) {
-    return fallback;
+    logger.warn('Gemini stage reply failed; using contextual fallback', { error: error.message, stage });
+    return contextualFallbackReply({ lead, userMessage, stage, settings });
   }
 }
 
@@ -192,12 +293,19 @@ Mensaje del usuario:
 ${userMessage}`;
 
   try {
-    return await generateText({
+    const reply = await generateText({
       prompt,
       temperature: 0.7,
       maxOutputTokens: 350
     });
+
+    if (!reply || !reply.trim() || isRepeatedReply(reply, lead)) {
+      return contextualFallbackReply({ lead, userMessage, stage: 'post_link_conversacion', settings });
+    }
+
+    return reply.trim();
   } catch (error) {
+    logger.warn('Gemini post-link reply failed; using contextual fallback', { error: error.message });
     return postLinkFallback(lead, hotmartLink);
   }
 }

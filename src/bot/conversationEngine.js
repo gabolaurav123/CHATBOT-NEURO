@@ -74,6 +74,51 @@ function memoryObject(memoryRow) {
   return memoryRow && memoryRow.memory ? memoryRow.memory : {};
 }
 
+function normalizeReplyText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function avoidRepeatedOutbound(lead, reply) {
+  if (!reply) return reply;
+
+  const current = normalizeReplyText(reply);
+  const last = normalizeReplyText(lead && lead.last_bot_message);
+  const repeated = current && last && (
+    current === last
+    || current.includes(last.slice(0, 120))
+    || last.includes(current.slice(0, 120))
+  );
+
+  if (!repeated) return reply;
+
+  if (lead && lead.funnel_stage === 'diagnostico_orientativo') {
+    return `Para no repetirte lo mismo, avancemos con algo concreto.
+
+Cuando aparece eso que estás viviendo, ¿lo sentís más como pensamientos que no paran o como una reacción en el cuerpo?`;
+  }
+
+  if (lead && lead.funnel_stage === 'descubrimiento_emocional') {
+    return `Para avanzar sin repetirnos: eso que contás puede tener relación con una respuesta emocional aprendida.
+
+¿Sentís que se activa más en relaciones, en momentos de soledad o cuando aparece algún recuerdo específico?`;
+  }
+
+  if (lead && lead.funnel_stage === 'oferta_presentada') {
+    return `Para no repetir toda la explicación, lo resumo simple: Neurotraumas dura 12 semanas, tiene acceso de por vida, acompañamiento y garantía de 14 días.
+
+¿Querés que te pase el link de Hotmart para revisarlo?`;
+  }
+
+  return `Para no repetirte lo mismo, avancemos desde donde estamos.
+
+Decime qué querés revisar ahora: lo que te está pasando, cómo funciona Neurotraumas, el precio o el acceso.`;
+}
+
 function lastOutboundMessage(history = []) {
   return [...(history || [])].reverse().find((item) => item.direction === 'outbound' && item.body);
 }
@@ -179,7 +224,7 @@ function result({ lead, conversation, reply }) {
     leadId: lead.id,
     conversationId: conversation.id,
     whatsappId: lead.whatsapp_id,
-    reply
+    reply: avoidRepeatedOutbound(lead, reply)
   };
 }
 
