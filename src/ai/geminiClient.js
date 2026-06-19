@@ -100,7 +100,7 @@ async function generateBotReply({
     reply: fallbackMessage(),
     detectedIntent: 'otro',
     detectedObjection: 'ninguna',
-    nextStage: currentStage || 'captacion',
+    nextStage: currentStage || 'inicio',
     fieldsToUpdate: {
       name: null,
       email: null,
@@ -108,7 +108,8 @@ async function generateBotReply({
       main_pain: null,
       urgency: null,
       problem_duration: null,
-      tried_before: null
+      tried_before: null,
+      objection_type: null
     },
     shouldSendHotmartLink: false,
     shouldPauseBot: false,
@@ -120,7 +121,7 @@ async function generateBotReply({
   "reply": "mensaje que se enviará por WhatsApp",
   "detectedIntent": "info | ansiedad | autosabotaje | precio | compra | objecion | crisis | borrar | humano | otro",
   "detectedObjection": "precio | tiempo | confianza | indecision | ninguna",
-  "nextStage": "captacion | diagnostico | datos_solicitados | oferta_presentada | link_pago_enviado | post_link_conversacion | pago_reportado | onboarding",
+  "nextStage": "inicio | video_ofrecido | video_enviado | diagnostico_orientativo | descubrimiento_emocional | pdf_ofrecido | pdf_enviado | oferta_presentada | link_pago_enviado | objecion | cierre_positivo | cierre_frio | crisis | post_link_conversacion | pago_reportado | onboarding",
   "fieldsToUpdate": {
     "name": null,
     "email": null,
@@ -128,7 +129,8 @@ async function generateBotReply({
     "main_pain": null,
     "urgency": null,
     "problem_duration": null,
-    "tried_before": null
+    "tried_before": null,
+    "objection_type": null
   },
   "shouldSendHotmartLink": false,
   "shouldPauseBot": false,
@@ -136,10 +138,15 @@ async function generateBotReply({
 }
 
 Reglas:
-- Producto: ${settings.product_name || 'Neurotraumas™'}.
-- Precio: USD $${settings.product_price || 360}.
+- Producto: ${settings.product_name || 'Neurotraumas'}.
+- Precio normal: USD $${settings.product_normal_price || 360}.
+- Precio especial por este canal: USD $${settings.product_special_price || settings.product_price || 270}.
+- Video gratuito: ${settings.video_link || 'no configurado'}.
+- PDF gratuito: ${settings.pdf_link || 'no configurado'}.
 - Link Hotmart disponible: ${settings.hotmart_link || 'https://pay.hotmart.com/T103515864E'}.
-- No menciones páginas externas de preparación ni materiales previos de preventa.
+- Sigue el flujo por etapas: video, diagnóstico, PDF, oferta y link de Hotmart.
+- No reinicies el flujo ni repitas mensajes anteriores.
+- No reenvíes video, PDF, oferta o link si ya fueron enviados, salvo que el usuario lo pida.
 - No prometas curas, no diagnostiques, no inventes descuentos ni cupos.
 - Una sola pregunta por respuesta.
 - Si hay crisis o autolesión, deja de vender.
@@ -150,7 +157,7 @@ ${JSON.stringify(lead || {}, null, 2)}
 Memoria:
 ${JSON.stringify(memory || {}, null, 2)}
 
-Etapa actual: ${currentStage || 'captacion'}
+Etapa actual: ${currentStage || 'inicio'}
 
 Historial reciente:
 ${JSON.stringify(conversationHistory || [], null, 2)}

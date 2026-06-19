@@ -86,7 +86,7 @@ function detectPain(message) {
 
 function detectPurchaseIntent(message) {
   const text = normalizeText(message);
-  return /(^si$|quiero empezar|quiero comprar|me interesa|me inscribo|pasame el link|pasame acceso|quiero pagar|como hago|quiero comprar|mandame el link|donde pago|link de pago|inscripcion|precio|link|pagar)/.test(text);
+  return /(quiero comprar|quiero inscribirme|me inscribo|pasame el link|mandame el link|enviame el link|pasame acceso|quiero pagar|donde pago|link de pago|quiero el link|pagar ahora|hacer el pago|como pago|inscripcion)/.test(text);
 }
 
 function detectDeleteRequest(message) {
@@ -112,6 +112,57 @@ function detectPriceIntent(message) {
 function detectPaymentReported(message) {
   const text = normalizeText(message);
   return /(ya pague|listo pagado|ya me inscribi|acabo de pagar|pago realizado|ya compre)/.test(text);
+}
+
+function detectAffirmative(message) {
+  const text = normalizeText(message);
+  return /^(si|sí|ok|okay|dale|claro|envialo|enviamelo|mandalo|mandamelo|pasalo|pasamelo|quiero verlo|por favor|va|bueno|listo)$/.test(text)
+    || /(si quiero|sí quiero|quiero verlo|me gustaria verlo|me gustaría verlo|envia|envía|manda|pasame|pásame)/.test(text);
+}
+
+function detectNegative(message) {
+  const text = normalizeText(message);
+  return /^(no|ahora no|despues|después|no quiero|no me interesa|no tengo tiempo|paso)$/.test(text);
+}
+
+function detectThanksOrOk(message) {
+  const text = normalizeText(message);
+  return /^(ok|okay|gracias|perfecto|lo veo|luego lo miro|ya lo reviso|lo voy a ver|despues te digo|después te digo|te aviso|dale gracias|bueno gracias)$/.test(text);
+}
+
+function detectViewedVideo(message) {
+  const text = normalizeText(message);
+  return /(ya lo vi|lo vi|ya vi el video|vi el video|ya termine|ya termine de verlo|me resono|me hizo sentido|me identifico|entendi|si me pasa)/.test(text);
+}
+
+function detectViewedPdf(message) {
+  const text = normalizeText(message);
+  return /(ya lo lei|ya lei|lo lei|ya vi el pdf|lei el pdf|leí el pdf|que hago ahora|como lo trabajo|como puedo sanar|como empiezo|quiero solucion|necesito ayuda|quiero cambiar)/.test(text);
+}
+
+function detectProgramDetailsIntent(message) {
+  const text = normalizeText(message);
+  return /(como funciona|que incluye|qué incluye|de que trata|programa|neurotraumas|cuanto dura|duracion|clases|certificado|garantia|garantía|resumen)/.test(text);
+}
+
+function detectFreeMaterialIntent(message) {
+  const text = normalizeText(message);
+  return /(gratis|gratuito|video|pdf|material gratuito|solo gratis)/.test(text);
+}
+
+function detectSummaryIntent(message) {
+  const text = normalizeText(message);
+  return /(resumen|resumeme|resúmeme|explicamelo simple|explicame simple)/.test(text);
+}
+
+function detectBotIdentityQuestion(message) {
+  const text = normalizeText(message);
+  return /(eres bot|sos bot|eres una ia|sos una ia|inteligencia artificial|robot|quien eres|quién eres)/.test(text);
+}
+
+function detectFarewell(message) {
+  const text = normalizeText(message);
+  return /^(chau|adios|adiós|hasta luego|hablamos luego|luego escribo|despues veo|después veo|te aviso|no me interesa|gracias)$/.test(text);
 }
 
 function detectUrgency(message) {
@@ -148,6 +199,16 @@ module.exports = {
   detectHumanRequest,
   detectPriceIntent,
   detectPaymentReported,
+  detectAffirmative,
+  detectNegative,
+  detectThanksOrOk,
+  detectViewedVideo,
+  detectViewedPdf,
+  detectProgramDetailsIntent,
+  detectFreeMaterialIntent,
+  detectSummaryIntent,
+  detectBotIdentityQuestion,
+  detectFarewell,
   detectUrgency,
   detectLeadIntent
 };

@@ -34,7 +34,7 @@ No quiero insistirte, solo cerrar bien esta conversación.
 
 Por lo que me contaste, esto sí parecía importante para ti.
 
-¿Quieres que dejemos tu proceso en pausa por ahora o todavía te interesa recibir orientación para entrar a Neurotraumas™?`;
+¿Quieres que dejemos tu proceso en pausa por ahora o todavía te interesa recibir orientación para entrar a Neurotraumas?`;
 }
 
 function buildPaymentFollowUps(lead, hotmartLink) {

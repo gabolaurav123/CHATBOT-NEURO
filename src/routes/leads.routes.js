@@ -157,7 +157,7 @@ router.post('/:id/send-hotmart-link', async (req, res, next) => {
     let lead = await getLeadOr404(id);
     const settings = await settingsService.getRuntimeSettings();
     const hotmartLink = settings.hotmart_link || 'https://pay.hotmart.com/T103515864E';
-    const message = hotmartMessage(lead, hotmartLink);
+    const message = hotmartMessage(lead, hotmartLink, settings);
     const recipient = getRecipientOrThrow(lead);
 
     await whatsappService.sendMessage(recipient, message);
@@ -166,6 +166,7 @@ router.post('/:id/send-hotmart-link', async (req, res, next) => {
     lead = await leadService.updateLead(id, {
       hotmart_link_sent: true,
       hotmart_link_sent_at: new Date(),
+      purchase_intent: true,
       funnel_stage: 'link_pago_enviado',
       payment_status: 'pendiente'
     });
@@ -174,7 +175,7 @@ router.post('/:id/send-hotmart-link', async (req, res, next) => {
       leadId: lead.id,
       phone: lead.phone,
       paymentLink: hotmartLink,
-      amount: settings.product_price,
+      amount: settings.product_special_price || settings.product_price,
       metadata: { source: 'crm' }
     });
 

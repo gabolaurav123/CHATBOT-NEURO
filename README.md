@@ -19,6 +19,10 @@ Variables criticas:
 - `ADMIN_API_KEY`: clave que debe enviar el CRM en `x-admin-api-key`.
 - `GEMINI_MODEL`: modelo de Gemini, por ejemplo `gemini-1.5-flash`.
 - `HOTMART_LINK`: link de pago, tambien editable desde `bot_settings`.
+- `VIDEO_LINK`: clase gratuita de 12 minutos que ofrece Marisa al inicio del flujo.
+- `PDF_LINK`: PDF gratuito que se ofrece despues del diagnostico orientativo.
+- `PRODUCT_NORMAL_PRICE`: precio normal mostrado al usuario, por defecto `360`.
+- `PRODUCT_SPECIAL_PRICE`: precio especial por este canal, por defecto `270`.
 - `WHATSAPP_SESSION_PATH`: carpeta local de sesion Baileys, recomendado `.baileys_auth`.
 - `PORT`: puerto HTTP. En Seenode usa `80`.
 
@@ -82,6 +86,11 @@ GEMINI_MODEL=gemini-1.5-flash
 GEMINI_TEMPERATURE=0.7
 GEMINI_MAX_OUTPUT_TOKENS=800
 HOTMART_LINK=https://pay.hotmart.com/T103515864E
+VIDEO_LINK=
+PDF_LINK=
+PRODUCT_NORMAL_PRICE=360
+PRODUCT_SPECIAL_PRICE=270
+PRODUCT_PRICE=270
 WHATSAPP_SESSION_PATH=.baileys_auth
 PORT=80
 NODE_ENV=production
@@ -188,7 +197,9 @@ Al iniciar, el servidor ejecuta `src/database/migrations/schema.sql` con `CREATE
 
 `whatsapp_id` es el JID real de Baileys y es el identificador usado para enviar mensajes. `phone` solo se guarda cuando se obtiene un numero real con seguridad, por ejemplo `+59171234567`. Si Baileys entrega un `@lid`, el backend guarda `phone = null`, `whatsapp_lid = ...@lid` y `display_phone = ID WhatsApp: ...`.
 
-El flujo envia directamente el acceso oficial de Hotmart:
+El flujo conversa como Marisa y avanza por etapas: bienvenida, video gratuito, diagnostico orientativo, PDF gratuito, oferta, objeciones y link oficial de Hotmart. El bot guarda en el lead si ya envio video, PDF, oferta y link para no repetirlos en bucle.
+
+El acceso oficial de Hotmart es:
 
 ```text
 https://pay.hotmart.com/T103515864E

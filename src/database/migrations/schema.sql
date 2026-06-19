@@ -24,8 +24,18 @@ CREATE TABLE IF NOT EXISTS leads (
   lead_status TEXT DEFAULT 'frio',
   funnel_stage TEXT DEFAULT 'inicio',
   main_objection TEXT,
+  objection_type TEXT,
+  video_sent BOOLEAN DEFAULT FALSE,
+  video_sent_at TIMESTAMP,
+  pdf_sent BOOLEAN DEFAULT FALSE,
+  pdf_sent_at TIMESTAMP,
+  offer_presented BOOLEAN DEFAULT FALSE,
+  offer_presented_at TIMESTAMP,
   hotmart_link_sent BOOLEAN DEFAULT FALSE,
   hotmart_link_sent_at TIMESTAMP,
+  purchase_intent BOOLEAN DEFAULT FALSE,
+  closed_conversation BOOLEAN DEFAULT FALSE,
+  crisis_detected BOOLEAN DEFAULT FALSE,
   payment_status TEXT DEFAULT 'pendiente',
   human_takeover BOOLEAN DEFAULT FALSE,
   bot_paused BOOLEAN DEFAULT FALSE,
@@ -39,6 +49,16 @@ CREATE TABLE IF NOT EXISTS leads (
 ALTER TABLE leads ALTER COLUMN phone DROP NOT NULL;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS whatsapp_lid TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS display_phone TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS objection_type TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS video_sent BOOLEAN DEFAULT FALSE;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS video_sent_at TIMESTAMP;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS pdf_sent BOOLEAN DEFAULT FALSE;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS pdf_sent_at TIMESTAMP;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS offer_presented BOOLEAN DEFAULT FALSE;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS offer_presented_at TIMESTAMP;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS purchase_intent BOOLEAN DEFAULT FALSE;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS closed_conversation BOOLEAN DEFAULT FALSE;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS crisis_detected BOOLEAN DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -111,7 +131,7 @@ CREATE TABLE IF NOT EXISTS payments (
   phone TEXT,
   status TEXT DEFAULT 'pending',
   provider TEXT DEFAULT 'hotmart',
-  amount NUMERIC DEFAULT 360,
+  amount NUMERIC DEFAULT 270,
   currency TEXT DEFAULT 'USD',
   payment_link TEXT,
   reported_by_user BOOLEAN DEFAULT FALSE,

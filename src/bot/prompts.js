@@ -32,11 +32,19 @@ const INTENTS = [
 ];
 
 const STAGES = [
-  'captacion',
-  'diagnostico',
-  'datos_solicitados',
+  'inicio',
+  'video_ofrecido',
+  'video_enviado',
+  'diagnostico_orientativo',
+  'descubrimiento_emocional',
+  'pdf_ofrecido',
+  'pdf_enviado',
   'oferta_presentada',
   'link_pago_enviado',
+  'objecion',
+  'cierre_positivo',
+  'cierre_frio',
+  'crisis',
   'post_link_conversacion',
   'pago_reportado',
   'onboarding'

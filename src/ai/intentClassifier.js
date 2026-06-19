@@ -35,7 +35,7 @@ function ruleBasedClassification(message) {
 async function classifyUserMessage({ message, lead, memory, history }) {
   const fallback = ruleBasedClassification(message);
 
-  const prompt = `Devuelve SOLO JSON válido. Clasifica este mensaje de WhatsApp para un chatbot vendedor de Neurotraumas™.
+  const prompt = `Devuelve SOLO JSON válido. Clasifica este mensaje de WhatsApp para Marisa, guía de Neurotraumas.
 
 Esquema:
 {
@@ -53,6 +53,7 @@ Esquema:
 }
 
 No inventes datos personales. Extrae nombre, email o usuario solo si aparecen claramente.
+No marques wantsPaymentLink solo porque pregunta precio; eso es precio, no compra.
 
 Lead:
 ${JSON.stringify(lead || {}, null, 2)}

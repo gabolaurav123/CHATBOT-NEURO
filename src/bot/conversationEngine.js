@@ -7,33 +7,48 @@ const followupService = require('../services/followupService');
 const { classifyUserMessage } = require('../ai/intentClassifier');
 const { generateHumanReply, generatePostLinkReply } = require('../ai/responseGenerator');
 const { generateBotReply } = require('../ai/geminiClient');
-const { extractEmail } = require('../utils/validators');
 const { normalizeUserProvidedPhone } = require('../utils/normalizePhone');
 const { addHours } = require('../utils/date');
 const { env } = require('../config/env');
 const {
+  normalizeText,
   detectInitialKeyword,
   detectGreeting,
   detectPain,
   detectPurchaseIntent,
   detectPriceIntent,
   detectPaymentReported,
-  detectUrgency
+  detectAffirmative,
+  detectNegative,
+  detectThanksOrOk,
+  detectViewedVideo,
+  detectViewedPdf,
+  detectProgramDetailsIntent,
+  detectFreeMaterialIntent,
+  detectSummaryIntent,
+  detectBotIdentityQuestion,
+  detectFarewell
 } = require('./intentDetector');
 const { detectObjection } = require('./objectionDetector');
 const {
   firstMessage,
-  greetingMessage,
-  painReplies,
-  diagnosticQuestion1,
-  diagnosticQuestion2,
-  diagnosticQuestion3,
-  diagnosticQuestion4,
-  askName,
-  askEmail,
-  askEmailAgain,
-  askUsername,
-  askPhone,
+  infoWelcomeMessage,
+  problemWelcomeMessage,
+  videoSentMessage,
+  videoDeclinedMessage,
+  videoWaitingMessage,
+  diagnosticIntroMessage,
+  directPainDiagnosticMessage,
+  diagnosticLongMessage,
+  diagnosticRecentMessage,
+  diagnosticUnknownMessage,
+  pdfOfferMessage,
+  pdfSentMessage,
+  pdfWaitingMessage,
+  programIntroMessage,
+  priceOnlyMessage,
+  summaryMessage,
+  freeMaterialsMessage,
   offerMessage,
   hotmartMessage,
   objectionReplies,
@@ -41,6 +56,9 @@ const {
   deleteMemoryMessage,
   stopMessage,
   humanTakeoverMessage,
+  botIdentityMessage,
+  softCloseMessage,
+  farewellMessage,
   fallbackMessage,
   postLinkFallback,
   paymentReportedMessage
@@ -51,33 +69,8 @@ function memoryObject(memoryRow) {
   return memoryRow && memoryRow.memory ? memoryRow.memory : {};
 }
 
-function cleanName(message) {
-  const value = String(message || '')
-    .replace(/^(me llamo|soy|mi nombre es)\s+/i, '')
-    .trim();
-
-  if (!value || value.includes('@') || value.length > 80 || value.length < 2) return null;
-  if (/\d{4,}/.test(value)) return null;
-
-  return value;
-}
-
-function cleanUsername(message) {
-  const value = String(message || '').trim();
-  const match = value.match(/@[\w.]{2,}/);
-  if (match) return match[0];
-  return value.slice(0, 120);
-}
-
-function interpretDiagnosticChange(message) {
-  const text = String(message || '').toLowerCase();
-  if (/^a\b|ansiedad/.test(text)) return 'ansiedad';
-  if (/^b\b|autosabotaje/.test(text)) return 'autosabotaje';
-  if (/^c\b|paz/.test(text)) return 'paz_mental';
-  if (/^d\b|relaciones/.test(text)) return 'relaciones';
-  if (/^e\b|seguridad/.test(text)) return 'recuperar_seguridad';
-  if (/^f\b|entender/.test(text)) return 'entender_que_me_pasa';
-  return message;
+function activeStep(lead, conversation, memory) {
+  return memory.current_step || conversation.current_step || lead.funnel_stage || 'inicio';
 }
 
 async function updateLeadAndMemory({ lead, conversation, leadFields, memoryPatch, summary, currentStep }) {
@@ -90,7 +83,7 @@ async function updateLeadAndMemory({ lead, conversation, leadFields, memoryPatch
   if (memoryPatch) {
     await memoryService.upsertMemory({
       leadId: lead.id,
-      phone: lead.phone,
+      phone: updatedLead.phone,
       memoryPatch,
       summary
     });
@@ -115,38 +108,254 @@ function result({ lead, conversation, reply }) {
   };
 }
 
-async function sendOffer({ lead, conversation, settings }) {
-  await updateLeadAndMemory({
-    lead,
-    conversation,
-    leadFields: {
-      funnel_stage: 'oferta_presentada'
-    },
-    memoryPatch: {
-      current_step: 'offer_presented',
-      stage: 'oferta_presentada'
-    },
-    currentStep: 'offer_presented'
-  });
-
-  return offerMessage(settings, lead);
+function getSpecialPrice(settings) {
+  return settings.product_special_price || settings.product_price || env.PRODUCT_SPECIAL_PRICE || env.PRODUCT_PRICE;
 }
 
-async function sendHotmart({ lead, conversation, settings }) {
-  const hotmartLink = settings.hotmart_link || env.HOTMART_LINK || 'https://pay.hotmart.com/T103515864E';
+function shouldAskForLinkAgain(message) {
+  const text = normalizeText(message);
+  return /(pasame el link|mandame el link|enviame el link|link otra vez|no me llego|donde pago|quiero comprar|quiero inscribirme|quiero pagar|perdi el link|perdí el link|link de pago|como pago)/.test(text);
+}
+
+function looksLikeEmotionalStory(message) {
+  const text = normalizeText(message);
+  return Boolean(detectPain(message))
+    || /(me pasa|siento|tengo|no puedo|lloro|miedo|ansiedad|bloqueo|pecho|garganta|taquicardia|pareja|apego|culpa|triste|soltar|abandono|rechazo|trauma)/.test(text);
+}
+
+function hasDiscoveryAgreement(message) {
+  const text = normalizeText(message);
+  return detectAffirmative(message)
+    || /(tiene sentido|exacto|eso me pasa|asi me siento|así me siento|nunca lo habia pensado|nunca lo había pensado|puede ser|totalmente|me identifico)/.test(text);
+}
+
+function isRecentProblem(message) {
+  const text = normalizeText(message);
+  return /(hace poco|reciente|semanas|dias|días|meses|empezo hace poco|empezó hace poco|desde hace poco)/.test(text);
+}
+
+function isLongTermProblem(message) {
+  const text = normalizeText(message);
+  return /(hace mucho|desde hace anos|desde hace años|toda mi vida|siempre|infancia|desde nina|desde niña|desde nino|desde niño|mas de un ano|más de un año|anos|años)/.test(text);
+}
+
+function isUnknownOrigin(message) {
+  const text = normalizeText(message);
+  return /(no se|no sé|no sabria|no sabría|ni idea|no entiendo|no identifico)/.test(text);
+}
+
+function hasBodyReaction(message) {
+  const text = normalizeText(message);
+  return /(cuerpo|pecho|garganta|taquicardia|tension|tensión|nudo|bloqueo|llorar|miedo|panico|pánico|temblor|respirar|presion|presión)/.test(text);
+}
+
+async function offerVideo({ lead, conversation, settings, body }) {
+  const pain = detectPain(body);
+  let reply = firstMessage(settings, lead);
+
+  if (pain || looksLikeEmotionalStory(body)) {
+    reply = problemWelcomeMessage(settings, lead);
+  } else if (detectInitialKeyword(body) && !detectGreeting(body)) {
+    reply = infoWelcomeMessage(settings, lead);
+  }
 
   const updatedLead = await updateLeadAndMemory({
     lead,
     conversation,
     leadFields: {
+      funnel_stage: 'video_ofrecido',
+      consent_24h: true,
+      memory_expires_at: addHours(new Date(), env.MEMORY_EXPIRATION_HOURS)
+    },
+    memoryPatch: {
+      current_step: 'video_offered',
+      conversation_stage: 'video_ofrecido',
+      video_sent: Boolean(lead.video_sent),
+      pdf_sent: Boolean(lead.pdf_sent),
+      offer_presented: Boolean(lead.offer_presented),
+      hotmart_link_sent: Boolean(lead.hotmart_link_sent)
+    },
+    currentStep: 'video_offered'
+  });
+
+  return result({ lead: updatedLead, conversation, reply });
+}
+
+async function sendVideo({ lead, conversation, settings }) {
+  const hasLink = Boolean(settings.video_link);
+  const nextStep = hasLink ? 'video_sent' : 'diagnostic_orientation';
+  const stage = hasLink ? 'video_enviado' : 'diagnostico_orientativo';
+
+  const updatedLead = await updateLeadAndMemory({
+    lead,
+    conversation,
+    leadFields: {
+      video_sent: hasLink,
+      video_sent_at: hasLink ? new Date() : lead.video_sent_at,
+      funnel_stage: stage
+    },
+    memoryPatch: {
+      current_step: nextStep,
+      conversation_stage: stage,
+      video_sent: hasLink
+    },
+    currentStep: nextStep
+  });
+
+  return result({ lead: updatedLead, conversation, reply: videoSentMessage(settings) });
+}
+
+async function askDiagnostic({ lead, conversation, reply = diagnosticIntroMessage(), body }) {
+  const pain = detectPain(body);
+  const updatedLead = await updateLeadAndMemory({
+    lead,
+    conversation,
+    leadFields: {
+      main_pain: lead.main_pain || pain || null,
+      funnel_stage: 'diagnostico_orientativo'
+    },
+    memoryPatch: {
+      current_step: 'diagnostic_orientation',
+      conversation_stage: 'diagnostico_orientativo',
+      main_pain: lead.main_pain || pain || null
+    },
+    summary: pain ? `Dolor principal: ${pain}` : undefined,
+    currentStep: 'diagnostic_orientation'
+  });
+
+  return result({ lead: updatedLead, conversation, reply });
+}
+
+async function handleDiagnosticAnswer({ lead, conversation, body }) {
+  let reply = diagnosticUnknownMessage();
+
+  if (isRecentProblem(body)) {
+    reply = diagnosticRecentMessage();
+  } else if (isLongTermProblem(body) || hasBodyReaction(body)) {
+    reply = diagnosticLongMessage();
+  } else if (isUnknownOrigin(body)) {
+    reply = diagnosticUnknownMessage();
+  } else {
+    reply = diagnosticLongMessage();
+  }
+
+  const updatedLead = await updateLeadAndMemory({
+    lead,
+    conversation,
+    leadFields: {
+      emotional_response: body,
+      problem_duration: lead.problem_duration || body,
+      funnel_stage: 'descubrimiento_emocional'
+    },
+    memoryPatch: {
+      current_step: 'discovery',
+      conversation_stage: 'descubrimiento_emocional',
+      emotional_response: body,
+      problem_duration: lead.problem_duration || body
+    },
+    currentStep: 'discovery'
+  });
+
+  return result({ lead: updatedLead, conversation, reply });
+}
+
+async function offerPdf({ lead, conversation }) {
+  const updatedLead = await updateLeadAndMemory({
+    lead,
+    conversation,
+    leadFields: {
+      funnel_stage: 'pdf_ofrecido'
+    },
+    memoryPatch: {
+      current_step: 'pdf_offered',
+      conversation_stage: 'pdf_ofrecido'
+    },
+    currentStep: 'pdf_offered'
+  });
+
+  return result({ lead: updatedLead, conversation, reply: pdfOfferMessage() });
+}
+
+async function sendPdf({ lead, conversation, settings }) {
+  const hasLink = Boolean(settings.pdf_link);
+  const nextStep = hasLink ? 'pdf_sent' : 'program_intro';
+  const stage = hasLink ? 'pdf_enviado' : 'pdf_no_configurado';
+
+  const updatedLead = await updateLeadAndMemory({
+    lead,
+    conversation,
+    leadFields: {
+      pdf_sent: hasLink,
+      pdf_sent_at: hasLink ? new Date() : lead.pdf_sent_at,
+      funnel_stage: stage
+    },
+    memoryPatch: {
+      current_step: nextStep,
+      conversation_stage: stage,
+      pdf_sent: hasLink
+    },
+    currentStep: nextStep
+  });
+
+  return result({ lead: updatedLead, conversation, reply: pdfSentMessage(settings) });
+}
+
+async function introduceProgram({ lead, conversation }) {
+  const updatedLead = await updateLeadAndMemory({
+    lead,
+    conversation,
+    leadFields: {
+      funnel_stage: 'descubrimiento_emocional'
+    },
+    memoryPatch: {
+      current_step: 'program_intro',
+      conversation_stage: 'descubrimiento_emocional'
+    },
+    currentStep: 'program_intro'
+  });
+
+  return result({ lead: updatedLead, conversation, reply: programIntroMessage() });
+}
+
+async function sendOffer({ lead, conversation, settings }) {
+  const updatedLead = await updateLeadAndMemory({
+    lead,
+    conversation,
+    leadFields: {
+      offer_presented: true,
+      offer_presented_at: lead.offer_presented_at || new Date(),
+      funnel_stage: 'oferta_presentada'
+    },
+    memoryPatch: {
+      current_step: 'offer_presented',
+      conversation_stage: 'oferta_presentada',
+      offer_presented: true
+    },
+    currentStep: 'offer_presented'
+  });
+
+  return result({ lead: updatedLead, conversation, reply: offerMessage(settings, updatedLead) });
+}
+
+async function sendHotmart({ lead, conversation, settings }) {
+  const link = settings.hotmart_link || env.HOTMART_LINK || 'https://pay.hotmart.com/T103515864E';
+  const amount = getSpecialPrice(settings);
+
+  const updatedLead = await updateLeadAndMemory({
+    lead,
+    conversation,
+    leadFields: {
+      purchase_intent: true,
       hotmart_link_sent: true,
-      hotmart_link_sent_at: new Date(),
+      hotmart_link_sent_at: lead.hotmart_link_sent_at || new Date(),
       funnel_stage: 'link_pago_enviado',
       payment_status: 'pendiente'
     },
     memoryPatch: {
       current_step: 'payment_link_sent',
-      stage: 'link_pago_enviado'
+      conversation_stage: 'link_pago_enviado',
+      purchase_intent: true,
+      hotmart_link_sent: true
     },
     currentStep: 'payment_link_sent'
   });
@@ -155,12 +364,12 @@ async function sendHotmart({ lead, conversation, settings }) {
     await paymentService.createPayment({
       leadId: updatedLead.id,
       phone: updatedLead.phone,
-      paymentLink: hotmartLink,
-      amount: settings.product_price || env.PRODUCT_PRICE,
+      paymentLink: link,
+      amount,
       metadata: { source: 'bot' }
     });
 
-    const followUps = buildPaymentFollowUps(updatedLead, hotmartLink);
+    const followUps = buildPaymentFollowUps(updatedLead, link);
     await followupService.createFollowUps(
       followUps.map((item) => ({
         leadId: updatedLead.id,
@@ -173,146 +382,46 @@ async function sendHotmart({ lead, conversation, settings }) {
     );
   }
 
-  return hotmartMessage(updatedLead, hotmartLink);
+  return result({ lead: updatedLead, conversation, reply: hotmartMessage(updatedLead, link, settings) });
 }
 
-function wantsProgramDetails(message) {
-  return /(qu[eé] incluye|expl[ií]came|que tiene|qué tiene|m[aá]s info|como funciona|c[oó]mo funciona)/i.test(message || '');
-}
-
-function wantsPaymentHelp(message) {
-  return /(c[oó]mo pago|d[oó]nde pago|pasame el link|p[aá]same el link|link otra vez|no encuentro el link|inscripci[oó]n|inscripcion|precio|link)/i.test(message || '');
-}
-
-async function handlePostLinkConversation({ lead, conversation, memory, history, body, settings }) {
-  const hotmartLink = settings.hotmart_link || env.HOTMART_LINK || 'https://pay.hotmart.com/T103515864E';
-  const name = lead.name ? `, ${lead.name}` : '';
-
-  if (detectPaymentReported(body)) {
-    await updateLeadAndMemory({
-      lead,
-      conversation,
-      leadFields: {
-        payment_status: 'reportado',
-        funnel_stage: 'pago_reportado'
-      },
-      memoryPatch: {
-        current_step: 'payment_reported',
-        stage: 'pago_reportado'
-      },
-      currentStep: 'payment_reported'
-    });
-    await paymentService.reportPaymentByUser({
-      leadId: lead.id,
-      phone: lead.phone,
-      paymentLink: hotmartLink,
-      amount: settings.product_price || env.PRODUCT_PRICE,
-      metadata: { source: 'bot_post_link' }
-    });
-    return paymentReportedMessage(lead);
-  }
-
-  await updateLeadAndMemory({
+async function sendPriceOnly({ lead, conversation, settings }) {
+  const updatedLead = await updateLeadAndMemory({
     lead,
     conversation,
     leadFields: {
-      funnel_stage: 'post_link_conversacion'
+      funnel_stage: lead.funnel_stage === 'inicio' ? 'oferta_presentada' : lead.funnel_stage
     },
     memoryPatch: {
-      current_step: 'post_link_conversation',
-      stage: 'post_link_conversacion'
-    },
-    currentStep: 'post_link_conversation'
+      current_step: activeStep(lead, conversation, {}),
+      last_price_answered: true
+    }
   });
 
-  const objection = detectObjection(body);
-  if (objection === 'precio') {
-    return `Te entiendo${name}.
+  return result({ lead: updatedLead, conversation, reply: priceOnlyMessage(settings) });
+}
 
-Y es válido mirarlo con cuidado.
-
-Más que verlo solo como un pago, míralo como una decisión sobre algo que lleva tiempo afectándote.
-
-Si esto sigue igual 3, 6 o 12 meses más, también tiene un costo emocional.
-
-La pregunta no es solo cuánto cuesta entrar.
-
-También es cuánto te está costando seguir cargando con lo mismo.
-
-Si quieres avanzar, aquí tienes nuevamente el acceso oficial:
-
-${hotmartLink}`;
-  }
-
-  if (objection === 'tiempo') {
-    return `Te entiendo.
-
-Justamente muchas personas llegan sintiendo que no tienen tiempo ni energía.
-
-Neurotraumas™ está pensado para avanzar paso a paso, no para saturarte.
-
-La idea no es exigirte más, sino darte estructura y herramientas para empezar a entender lo que te pasa.
-
-¿Tu preocupación es más por horarios, constancia o energía emocional?`;
-  }
-
-  if (objection === 'confianza') {
-    return `Es normal tener dudas.
-
-Nadie debería tomar una decisión importante solo por impulso.
-
-Lo que sí puedo decirte es que Neurotraumas™ no se basa en prometer resultados mágicos.
-
-Se basa en ayudarte a comprender tus patrones, trabajar con herramientas prácticas y acompañarte durante 12 semanas.
-
-No se trata de cambiar de la noche a la mañana.
-
-Se trata de empezar a dejar de repetir lo mismo sin entender por qué.
-
-Si quieres, te puedo explicar qué incluye exactamente antes de que tomes la decisión.`;
-  }
-
-  if (objection === 'indecision') {
-    return `Claro${name}, piénsalo con calma.
-
-Solo te dejo una pregunta para que lo mires con honestidad:
-
-¿Lo quieres pensar porque necesitas revisar algo concreto, o porque una parte de ti tiene miedo de empezar?
-
-Si quieres, puedo ayudarte a resolver esa duda puntual.`;
-  }
-
-  if (wantsProgramDetails(body)) {
-    return `Claro.
-
-Neurotraumas™ incluye un entrenamiento de 12 semanas donde trabajarás comprensión del sistema nervioso, identificación de patrones automáticos, ansiedad, autosabotaje, bloqueos internos y herramientas prácticas para regularte mejor.
-
-Además tendrás ejercicios aplicados, acompañamiento y comunidad.
-
-La idea es que no solo entiendas lo que te pasa, sino que tengas una estructura para empezar a trabajarlo.
-
-Si sientes que esto conecta con lo que estás viviendo, puedes inscribirte aquí:
-
-${hotmartLink}`;
-  }
-
-  if (wantsPaymentHelp(body) || detectPurchaseIntent(body)) {
-    return `Claro${name}.
-
-Te dejo nuevamente el acceso oficial de inscripción:
-
-${hotmartLink}
-
-Cuando completes el pago, guarda la confirmación de Hotmart y avísame por aquí para ayudarte con los siguientes pasos.`;
-  }
-
-  return generatePostLinkReply({
+async function sendFreeMaterials({ lead, conversation, settings }) {
+  const updatedLead = await updateLeadAndMemory({
     lead,
-    memory,
-    history,
-    userMessage: body,
-    settings
-  }).catch(() => postLinkFallback(lead, hotmartLink));
+    conversation,
+    leadFields: {
+      video_sent: Boolean(settings.video_link) || lead.video_sent,
+      video_sent_at: settings.video_link && !lead.video_sent ? new Date() : lead.video_sent_at,
+      pdf_sent: Boolean(settings.pdf_link) || lead.pdf_sent,
+      pdf_sent_at: settings.pdf_link && !lead.pdf_sent ? new Date() : lead.pdf_sent_at,
+      funnel_stage: settings.pdf_link ? 'pdf_enviado' : lead.funnel_stage
+    },
+    memoryPatch: {
+      current_step: settings.pdf_link ? 'pdf_sent' : 'diagnostic_orientation',
+      conversation_stage: settings.pdf_link ? 'pdf_enviado' : lead.funnel_stage,
+      video_sent: Boolean(settings.video_link) || lead.video_sent,
+      pdf_sent: Boolean(settings.pdf_link) || lead.pdf_sent
+    },
+    currentStep: settings.pdf_link ? 'pdf_sent' : 'diagnostic_orientation'
+  });
+
+  return result({ lead: updatedLead, conversation, reply: freeMaterialsMessage(settings) });
 }
 
 async function handleSpecialCases({ lead, conversation, classification }) {
@@ -322,12 +431,14 @@ async function handleSpecialCases({ lead, conversation, classification }) {
       conversation,
       leadFields: {
         funnel_stage: 'crisis',
+        crisis_detected: true,
         bot_paused: true,
         human_takeover: true
       },
       memoryPatch: {
         current_step: 'crisis',
-        stage: 'crisis'
+        conversation_stage: 'crisis',
+        crisis_detected: true
       },
       currentStep: 'crisis'
     });
@@ -346,7 +457,9 @@ async function handleSpecialCases({ lead, conversation, classification }) {
   if (classification.stopRequested) {
     await leadService.updateLead(lead.id, {
       bot_paused: true,
-      lead_status: 'perdido'
+      lead_status: 'perdido',
+      closed_conversation: true,
+      funnel_stage: 'cierre_frio'
     });
     return stopMessage();
   }
@@ -361,221 +474,208 @@ async function handleSpecialCases({ lead, conversation, classification }) {
   return null;
 }
 
-async function handleCurrentStep({ lead, conversation, memory, classification, body, settings }) {
-  const currentStep = memory.current_step || conversation.current_step || 'inicio';
+async function handlePostLinkConversation({ lead, conversation, memory, history, body, settings }) {
+  const link = settings.hotmart_link || env.HOTMART_LINK || 'https://pay.hotmart.com/T103515864E';
 
-  if (currentStep === 'pain_selection' || lead.funnel_stage === 'captacion') {
-    const pain = classification.pain || detectPain(body);
-
-    if (!pain) {
-      return fallbackMessage();
-    }
-
-    const reply = painReplies[pain] || painReplies.informacion;
-    await updateLeadAndMemory({
-      lead,
-      conversation,
-      leadFields: {
-        main_pain: pain,
-        funnel_stage: 'diagnostico'
-      },
-      memoryPatch: {
-        current_step: pain === 'informacion' ? 'diagnostic_change' : 'pain_followup',
-        stage: 'diagnostico',
-        main_pain: pain
-      },
-      summary: `Dolor principal: ${pain}`,
-      currentStep: pain === 'informacion' ? 'diagnostic_change' : 'pain_followup'
-    });
-
-    return reply;
-  }
-
-  if (currentStep === 'pain_followup') {
-    await updateLeadAndMemory({
-      lead,
-      conversation,
-      leadFields: {
-        emotional_response: body
-      },
-      memoryPatch: {
-        current_step: 'diagnostic_change',
-        emotional_response: body
-      },
-      currentStep: 'diagnostic_change'
-    });
-
-    return diagnosticQuestion1();
-  }
-
-  if (currentStep === 'diagnostic_change') {
-    const mainPain = interpretDiagnosticChange(body);
-    await updateLeadAndMemory({
-      lead,
-      conversation,
-      leadFields: {
-        main_pain: lead.main_pain || mainPain,
-        emotional_response: body
-      },
-      memoryPatch: {
-        current_step: 'diagnostic_duration',
-        desired_change: mainPain
-      },
-      currentStep: 'diagnostic_duration'
-    });
-
-    return diagnosticQuestion2();
-  }
-
-  if (currentStep === 'diagnostic_duration') {
-    await updateLeadAndMemory({
-      lead,
-      conversation,
-      leadFields: {
-        problem_duration: body
-      },
-      memoryPatch: {
-        current_step: 'diagnostic_tried',
-        problem_duration: body
-      },
-      currentStep: 'diagnostic_tried'
-    });
-
-    return diagnosticQuestion3();
-  }
-
-  if (currentStep === 'diagnostic_tried') {
-    await updateLeadAndMemory({
-      lead,
-      conversation,
-      leadFields: {
-        tried_before: body
-      },
-      memoryPatch: {
-        current_step: 'diagnostic_urgency',
-        tried_before: body
-      },
-      currentStep: 'diagnostic_urgency'
-    });
-
-    return diagnosticQuestion4();
-  }
-
-  if (currentStep === 'diagnostic_urgency') {
-    const urgency = classification.urgency || detectUrgency(body);
-    if (!urgency || urgency < 1 || urgency > 10) {
-      return 'Para ubicarte bien, respóndeme con un número del 1 al 10. ¿Qué tan urgente es para ti empezar a cambiar esto?';
-    }
-
-    const leadStatus = urgency >= 7 ? 'caliente' : urgency >= 5 ? 'tibio' : 'frio';
-    const nextStep = lead.name ? 'ask_email' : 'ask_name';
-
+  if (detectPaymentReported(body)) {
     const updatedLead = await updateLeadAndMemory({
       lead,
       conversation,
       leadFields: {
-        urgency,
-        lead_status: leadStatus,
-        funnel_stage: 'datos_solicitados'
+        payment_status: 'reportado',
+        funnel_stage: 'pago_reportado',
+        purchase_intent: true
       },
       memoryPatch: {
-        current_step: nextStep,
-        urgency
+        current_step: 'payment_reported',
+        conversation_stage: 'pago_reportado'
       },
-      currentStep: nextStep
+      currentStep: 'payment_reported'
     });
 
-    return updatedLead.name ? askEmail(updatedLead) : askName();
+    await paymentService.reportPaymentByUser({
+      leadId: updatedLead.id,
+      phone: updatedLead.phone,
+      paymentLink: link,
+      amount: getSpecialPrice(settings),
+      metadata: { source: 'bot_post_link' }
+    });
+
+    return result({ lead: updatedLead, conversation, reply: paymentReportedMessage(updatedLead) });
   }
 
-  if (currentStep === 'ask_name') {
-    const name = classification.name || cleanName(body);
-    if (!name) {
-      return 'Para registrarte bien, ¿me dices tu nombre?';
-    }
+  const updatedLead = await updateLeadAndMemory({
+    lead,
+    conversation,
+    leadFields: {
+      funnel_stage: 'post_link_conversacion'
+    },
+    memoryPatch: {
+      current_step: 'post_link_conversation',
+      conversation_stage: 'post_link_conversacion'
+    },
+    currentStep: 'post_link_conversation'
+  });
 
-    const updatedLead = await updateLeadAndMemory({
-      lead,
-      conversation,
-      leadFields: {
-        name
-      },
-      memoryPatch: {
-        current_step: 'ask_email',
-        name
-      },
-      currentStep: 'ask_email'
-    });
-
-    return askEmail(updatedLead);
+  if (detectBotIdentityQuestion(body)) {
+    return result({ lead: updatedLead, conversation, reply: botIdentityMessage() });
   }
 
-  if (currentStep === 'ask_email') {
-    const email = classification.email || extractEmail(body);
-    if (!email) {
-      return askEmailAgain();
-    }
-
-    await updateLeadAndMemory({
-      lead,
-      conversation,
-      leadFields: {
-        email
-      },
-      memoryPatch: {
-        current_step: 'ask_username',
-        email
-      },
-      currentStep: 'ask_username'
-    });
-
-    return askUsername();
+  if (shouldAskForLinkAgain(body) || detectPurchaseIntent(body)) {
+    return sendHotmart({ lead: updatedLead, conversation, settings });
   }
 
-  if (currentStep === 'ask_username') {
-    const username = classification.username || cleanUsername(body);
-    const nextStep = lead.phone ? 'offer_presented' : 'ask_phone';
-    const updatedLead = await updateLeadAndMemory({
-      lead,
-      conversation,
-      leadFields: {
-        username
-      },
-      memoryPatch: {
-        current_step: nextStep,
-        username
-      },
-      currentStep: nextStep
-    });
-
-    if (!updatedLead.phone) {
-      return askPhone();
-    }
-
-    return sendOffer({ lead: updatedLead, conversation, settings });
+  if (detectThanksOrOk(body) || detectFarewell(body)) {
+    return result({ lead: updatedLead, conversation, reply: softCloseMessage() });
   }
 
-  if (currentStep === 'ask_phone') {
-    const phone = normalizeUserProvidedPhone(body);
-    if (!phone) {
-      return 'Para guardarlo bien, envíame tu número de WhatsApp con código de país. Ejemplo: +59171234567';
-    }
-
-    const updatedLead = await updateLeadAndMemory({
-      lead,
+  const objection = detectObjection(body);
+  if (objection && objection !== 'ninguna') {
+    const leadWithObjection = await updateLeadAndMemory({
+      lead: updatedLead,
       conversation,
       leadFields: {
-        phone,
-        display_phone: phone
+        main_objection: objection,
+        objection_type: objection,
+        funnel_stage: 'objecion'
       },
       memoryPatch: {
-        current_step: 'offer_presented',
-        phone
-      },
-      currentStep: 'offer_presented'
+        objection_type: objection,
+        current_step: 'post_link_conversation'
+      }
     });
 
-    return sendOffer({ lead: updatedLead, conversation, settings });
+    return result({
+      lead: leadWithObjection,
+      conversation,
+      reply: objectionReplies[objection] || postLinkFallback(leadWithObjection)
+    });
+  }
+
+  if (detectProgramDetailsIntent(body)) {
+    return result({ lead: updatedLead, conversation, reply: offerMessage(settings, updatedLead) });
+  }
+
+  if (detectPriceIntent(body)) {
+    return result({ lead: updatedLead, conversation, reply: priceOnlyMessage(settings) });
+  }
+
+  if (detectSummaryIntent(body)) {
+    return result({ lead: updatedLead, conversation, reply: summaryMessage(settings) });
+  }
+
+  const reply = await generatePostLinkReply({
+    lead: updatedLead,
+    memory,
+    history,
+    userMessage: body,
+    settings
+  }).catch(() => postLinkFallback(updatedLead));
+
+  return result({ lead: updatedLead, conversation, reply });
+}
+
+async function handleStep({ lead, conversation, memory, body, settings }) {
+  const step = activeStep(lead, conversation, memory);
+
+  if (lead.closed_conversation && !detectProgramDetailsIntent(body) && !detectPurchaseIntent(body) && !detectPriceIntent(body)) {
+    return result({ lead, conversation, reply: farewellMessage() });
+  }
+
+  if (step === 'video_offered' || lead.funnel_stage === 'video_ofrecido') {
+    if (detectAffirmative(body)) {
+      return sendVideo({ lead, conversation, settings });
+    }
+
+    if (detectNegative(body)) {
+      const updatedLead = await updateLeadAndMemory({
+        lead,
+        conversation,
+        leadFields: {
+          closed_conversation: true,
+          funnel_stage: 'cierre_frio'
+        },
+        memoryPatch: {
+          current_step: 'closed',
+          conversation_stage: 'cierre_frio',
+          closed_conversation: true
+        },
+        currentStep: 'closed'
+      });
+      return result({ lead: updatedLead, conversation, reply: videoDeclinedMessage() });
+    }
+
+    if (looksLikeEmotionalStory(body)) {
+      return askDiagnostic({ lead, conversation, reply: directPainDiagnosticMessage(), body });
+    }
+  }
+
+  if (step === 'video_sent' || lead.funnel_stage === 'video_enviado') {
+    if (detectThanksOrOk(body)) {
+      return result({ lead, conversation, reply: videoWaitingMessage() });
+    }
+
+    if (detectViewedVideo(body) || hasDiscoveryAgreement(body)) {
+      return askDiagnostic({ lead, conversation, reply: diagnosticIntroMessage(), body });
+    }
+
+    if (looksLikeEmotionalStory(body)) {
+      return askDiagnostic({ lead, conversation, reply: directPainDiagnosticMessage(), body });
+    }
+  }
+
+  if (step === 'diagnostic_orientation' || lead.funnel_stage === 'diagnostico_orientativo') {
+    return handleDiagnosticAnswer({ lead, conversation, body });
+  }
+
+  if (step === 'discovery' || lead.funnel_stage === 'descubrimiento_emocional') {
+    if (hasDiscoveryAgreement(body)) {
+      return offerPdf({ lead, conversation });
+    }
+
+    if (detectProgramDetailsIntent(body)) {
+      return introduceProgram({ lead, conversation });
+    }
+
+    if (isUnknownOrigin(body)) {
+      return result({ lead, conversation, reply: diagnosticUnknownMessage() });
+    }
+  }
+
+  if (step === 'pdf_offered' || lead.funnel_stage === 'pdf_ofrecido') {
+    if (detectAffirmative(body)) {
+      return sendPdf({ lead, conversation, settings });
+    }
+
+    if (detectNegative(body)) {
+      return introduceProgram({ lead, conversation });
+    }
+  }
+
+  if (step === 'pdf_sent' || lead.funnel_stage === 'pdf_enviado') {
+    if (detectThanksOrOk(body)) {
+      return result({ lead, conversation, reply: pdfWaitingMessage() });
+    }
+
+    if (detectViewedPdf(body) || detectProgramDetailsIntent(body)) {
+      return introduceProgram({ lead, conversation });
+    }
+  }
+
+  if (step === 'program_intro') {
+    if (detectAffirmative(body) || detectProgramDetailsIntent(body)) {
+      return sendOffer({ lead, conversation, settings });
+    }
+  }
+
+  if (step === 'offer_presented' || lead.funnel_stage === 'oferta_presentada') {
+    if (detectAffirmative(body) || detectPurchaseIntent(body)) {
+      return sendHotmart({ lead, conversation, settings });
+    }
+
+    if (detectThanksOrOk(body)) {
+      return result({ lead, conversation, reply: softCloseMessage() });
+    }
   }
 
   return null;
@@ -585,7 +685,7 @@ async function applyGeminiFields({ lead, conversation, aiReply }) {
   const fields = aiReply && aiReply.fieldsToUpdate ? aiReply.fieldsToUpdate : {};
   const safeFields = {};
 
-  for (const key of ['name', 'email', 'username', 'main_pain', 'urgency', 'problem_duration', 'tried_before']) {
+  for (const key of ['name', 'email', 'username', 'main_pain', 'urgency', 'problem_duration', 'tried_before', 'objection_type']) {
     if (fields[key] !== null && fields[key] !== undefined && fields[key] !== '') {
       safeFields[key] = fields[key];
     }
@@ -609,6 +709,7 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
     whatsapp_lid: String(whatsappId || '').endsWith('@lid') ? whatsappId : null,
     display_phone: phone || whatsappId
   };
+
   let lead = await leadService.upsertLeadByWhatsAppIdentity({ identity: leadIdentity, sourceKeyword });
   const conversation = await messageService.getOrCreateActiveConversation(lead);
 
@@ -645,31 +746,9 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
   const memory = memoryObject(memoryRow);
   const history = await messageService.getConversationHistory(lead.id);
   const settings = await settingsService.getRuntimeSettings();
-  const isPostLink = lead.hotmart_link_sent && lead.payment_status === 'pendiente';
 
-  if (sourceKeyword && lead.funnel_stage === 'inicio') {
-    await updateLeadAndMemory({
-      lead,
-      conversation,
-      leadFields: {
-        source_keyword: sourceKeyword,
-        funnel_stage: 'captacion',
-        consent_24h: true,
-        memory_expires_at: addHours(new Date(), env.MEMORY_EXPIRATION_HOURS)
-      },
-      memoryPatch: {
-        current_step: 'pain_selection',
-        stage: 'captacion',
-        source_keyword: sourceKeyword
-      },
-      currentStep: 'pain_selection'
-    });
-
-    return result({ lead, conversation, reply: firstMessage() });
-  }
-
-  if (detectGreeting(body) && lead.funnel_stage === 'inicio') {
-    return result({ lead, conversation, reply: greetingMessage() });
+  if (detectBotIdentityQuestion(body)) {
+    return result({ lead, conversation, reply: botIdentityMessage() });
   }
 
   const classification = await classifyUserMessage({ message: body, lead, memory, history });
@@ -677,44 +756,67 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
 
   const specialReply = await handleSpecialCases({ lead, conversation, classification });
   if (specialReply) {
-    return result({ lead, conversation, reply: specialReply });
+    return result({ lead: await leadService.getLeadById(lead.id), conversation, reply: specialReply });
   }
 
-  if (isPostLink) {
-    const reply = await handlePostLinkConversation({ lead, conversation, memory, history, body, settings });
-    return result({ lead: await leadService.getLeadById(lead.id), conversation, reply });
+  lead = await leadService.getLeadById(lead.id);
+
+  if (lead.hotmart_link_sent && lead.payment_status === 'pendiente') {
+    return handlePostLinkConversation({ lead, conversation, memory, history, body, settings });
   }
 
-  if (classification.wantsPaymentLink || detectPurchaseIntent(body) || detectPriceIntent(body)) {
-    const reply = await sendHotmart({ lead, conversation, settings });
-    return result({ lead, conversation, reply });
+  if (classification.wantsPaymentLink || detectPurchaseIntent(body)) {
+    return sendHotmart({ lead, conversation, settings });
+  }
+
+  if (detectPriceIntent(body)) {
+    return sendPriceOnly({ lead, conversation, settings });
+  }
+
+  if (detectSummaryIntent(body)) {
+    return result({ lead, conversation, reply: summaryMessage(settings) });
+  }
+
+  if (detectFreeMaterialIntent(body) && !lead.hotmart_link_sent && !lead.video_sent && !lead.pdf_sent && lead.funnel_stage === 'inicio') {
+    return sendFreeMaterials({ lead, conversation, settings });
   }
 
   const objection = classification.objection || detectObjection(body);
   if (objection && objection !== 'ninguna') {
-    await updateLeadAndMemory({
+    const updatedLead = await updateLeadAndMemory({
       lead,
       conversation,
       leadFields: {
-        main_objection: objection
+        main_objection: objection,
+        objection_type: objection,
+        funnel_stage: 'objecion'
       },
       memoryPatch: {
-        objection,
-        current_step: 'objection'
+        objection_type: objection,
+        current_step: 'objection',
+        conversation_stage: 'objecion'
       },
       currentStep: 'objection'
     });
-    return result({ lead, conversation, reply: objectionReplies[objection] });
+
+    return result({ lead: updatedLead, conversation, reply: objectionReplies[objection] });
   }
 
-  const stepReply = await handleCurrentStep({ lead, conversation, memory, classification, body, settings });
+  const stepReply = await handleStep({ lead, conversation, memory, body, settings });
   if (stepReply) {
-    return result({ lead, conversation, reply: stepReply });
+    return stepReply;
   }
 
-  if (lead.lead_status === 'caliente' && !['oferta_presentada', 'link_pago_enviado', 'post_link_conversacion', 'pago_reportado', 'onboarding'].includes(lead.funnel_stage)) {
-    const reply = await sendOffer({ lead, conversation, settings });
-    return result({ lead, conversation, reply });
+  if ((sourceKeyword || detectGreeting(body)) && lead.funnel_stage === 'inicio') {
+    return offerVideo({ lead, conversation, settings, body });
+  }
+
+  if (looksLikeEmotionalStory(body) && !lead.offer_presented && !lead.hotmart_link_sent) {
+    return askDiagnostic({ lead, conversation, reply: directPainDiagnosticMessage(), body });
+  }
+
+  if (detectProgramDetailsIntent(body)) {
+    return introduceProgram({ lead, conversation });
   }
 
   const aiStructured = await generateBotReply({
@@ -729,8 +831,7 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
   await applyGeminiFields({ lead, conversation, aiReply: aiStructured });
 
   if (aiStructured.shouldSendHotmartLink || aiStructured.detectedIntent === 'compra') {
-    const reply = await sendHotmart({ lead, conversation, settings });
-    return result({ lead, conversation, reply });
+    return sendHotmart({ lead: await leadService.getLeadById(lead.id), conversation, settings });
   }
 
   if (aiStructured.detectedObjection && aiStructured.detectedObjection !== 'ninguna') {

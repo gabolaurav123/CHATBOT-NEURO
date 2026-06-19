@@ -2,243 +2,333 @@ function withName(lead, fallback = '') {
   return lead && lead.name ? lead.name : fallback;
 }
 
-function firstMessage() {
-  return `Hola 👋
-Gracias por escribirme.
-
-Vi tu interés en Neurotraumas™.
-
-Antes de pasarte el acceso, quiero entender algo importante para orientarte mejor.
-
-Para darte una atención más personalizada, voy a recordar esta conversación durante las próximas 24 horas. Después de ese tiempo, el historial se elimina automáticamente y solo quedará un registro básico de seguimiento.
-
-Si prefieres que no guardemos esta conversación, puedes escribir BORRAR en cualquier momento.
-
-Dime, ¿qué sientes que hoy te está afectando más?
-
-1️⃣ Ansiedad constante
-2️⃣ Autosabotaje
-3️⃣ Pensamientos repetitivos
-4️⃣ Relaciones difíciles
-5️⃣ Me siento bloqueado(a)
-6️⃣ Solo quiero información del programa`;
+function prices(settings = {}) {
+  return {
+    normal: settings.product_normal_price || '360',
+    special: settings.product_special_price || settings.product_price || '270'
+  };
 }
 
-function greetingMessage() {
-  return firstMessage();
+function hotmartLink(settings = {}) {
+  return settings.hotmart_link || 'https://pay.hotmart.com/T103515864E';
 }
 
-const painReplies = {
-  ansiedad: `Gracias por compartirlo ❤️
-
-Quiero decirte algo importante:
-
-Sentir ansiedad no significa que seas débil.
-
-Muchas veces el sistema nervioso sigue reaccionando como si todavía hubiera peligro, incluso cuando racionalmente sabes que no debería sentirse así.
-
-Puede aparecer como mente acelerada, cansancio, miedo, tensión, dificultad para descansar o sensación de no poder desconectar.
-
-¿Te pasa algo de eso?`,
-
-  autosabotaje: `Gracias por compartirlo ❤️
-
-Te pregunto algo:
-
-¿Te ha pasado que sabes lo que deberías hacer, pero terminas postergando, frenándote o repitiendo el mismo patrón?
-
-No porque no quieras cambiar, sino como si algo dentro de ti te detuviera.`,
-
-  pensamientos_repetitivos: `Entiendo.
-
-Cuando la mente no se detiene, puede sentirse agotador.
-
-A veces uno intenta distraerse, dormir, trabajar o seguir con su día, pero los mismos pensamientos vuelven una y otra vez.
-
-¿Sientes que esos pensamientos aparecen más cuando estás en calma, antes de dormir o después de alguna situación emocional?`,
-
-  relaciones_dificiles: `Gracias por abrirlo.
-
-Muchas veces las relaciones activan heridas, miedos, reacciones o patrones que uno no entiende del todo.
-
-A veces no se trata solo de la otra persona, sino de lo que se activa dentro de nosotros.
-
-¿Sientes que repites patrones en tus relaciones, como apego, miedo, distancia, discusiones o dificultad para poner límites?`,
-
-  bloqueo: `Te entiendo.
-
-Sentirse bloqueado puede ser muy frustrante, sobre todo cuando por dentro sabes que quieres avanzar, pero algo parece detenerte.
-
-A veces no es falta de capacidad, sino una respuesta interna de protección, miedo o saturación emocional.
-
-¿Sientes que ese bloqueo aparece más en decisiones, relaciones, trabajo, estudio o cambios personales?`,
-
-  informacion: `Claro. Antes de enviarte información, quiero ubicarte un poco mejor para que no sea algo genérico.
-
-Hoy, si pudieras cambiar una sola cosa, ¿qué te gustaría cambiar primero?`
-};
-
-function diagnosticQuestion1() {
-  return `Hoy, si pudieras cambiar una sola cosa, ¿qué te gustaría cambiar primero?
-
-A) Ansiedad
-B) Autosabotaje
-C) Paz mental
-D) Relaciones
-E) Recuperar seguridad
-F) Entender qué me pasa`;
+function videoLink(settings = {}) {
+  return settings.video_link || '';
 }
 
-function diagnosticQuestion2() {
-  return `¿Hace cuánto sientes que esto viene afectándote?
-
-* Menos de 6 meses
-* Más de 1 año
-* Más de 3 años
-* Casi toda mi vida`;
+function pdfLink(settings = {}) {
+  return settings.pdf_link || '';
 }
 
-function diagnosticQuestion3() {
-  return `¿Ya intentaste algo para cambiarlo?
-
-* Terapia
-* Cursos
-* Meditación
-* Nada todavía
-* Muchas cosas y sigo igual`;
-}
-
-function diagnosticQuestion4() {
-  return `Del 1 al 10, ¿qué tan urgente es para ti empezar a cambiar esto?`;
-}
-
-function askName() {
-  return `Gracias por responderme con tanta honestidad.
-
-Para dejar tu orientación registrada, ¿me dices tu nombre?`;
-}
-
-function askEmail(lead) {
+function firstMessage(settings = {}, lead = null) {
   const name = withName(lead);
-  return `Perfecto${name ? `, ${name}` : ''}.
+  return `Hola${name ? ` ${name}` : ''} 👋 Qué bueno que estés acá.
 
-¿A qué correo te puedo enviar la información de acceso por si quieres revisarla con calma?`;
+Soy Marisa. Desde el 2014 acompaño a personas a entender sus heridas emocionales, liberar cargas internas y recuperar más calma en su mente y en su cuerpo.
+
+Para empezar de una forma simple, quiero regalarte una clase corta de 12 minutos donde te explico cómo funciona el cerebro cuando se activa una herida emocional o un trauma.
+
+Voy a recordar esta conversación durante 24 horas para no repetirte lo mismo. Si prefieres borrar esa memoria temporal, escribí BORRAR.
+
+¿Querés que te envíe el video ahora?`;
 }
 
-function askEmailAgain() {
-  return `Creo que ese correo no quedó bien escrito.
-
-¿Me lo puedes enviar nuevamente?`;
+function greetingMessage(settings = {}, lead = null) {
+  return firstMessage(settings, lead);
 }
 
-function askUsername() {
-  return `¿Y por qué red llegaste o cuál es tu usuario? Puede ser Instagram, Facebook, TikTok o WhatsApp.`;
-}
-
-function askPhone() {
-  return `Para dejar tu registro completo y poder darte seguimiento si se corta la conversación, ¿me compartes tu número de WhatsApp?`;
-}
-
-function offerMessage(settings, lead) {
-  const price = settings.product_price || '360';
+function infoWelcomeMessage(settings = {}, lead = null) {
   const name = withName(lead);
+  return `Claro${name ? `, ${name}` : ''} ❤️ Te cuento.
 
-  return `Gracias${name ? `, ${name}` : ''}.
+Neurotraumas es un proceso de 12 semanas para aprender a identificar y empezar a desactivar heridas emocionales o reacciones internas que se repiten, como miedo, ansiedad, bloqueo, culpa, apego, rechazo o sensación de no poder avanzar.
 
-Por lo que me cuentas, Neurotraumas™ podría tener mucho sentido para ti.
+Antes de hablarte del programa, me gusta regalar una clase corta de 12 minutos para que entiendas cómo funciona esto en el cerebro y en el cuerpo.
 
-Te explico de forma simple:
-
-Neurotraumas™ es un entrenamiento de 12 semanas diseñado para ayudarte a comprender mejor tu sistema nervioso, identificar patrones automáticos y empezar a trabajar respuestas emocionales que muchas veces se repiten sin que sepas por qué.
-
-Dentro del programa trabajarás:
-
-✅ comprensión del sistema nervioso
-✅ identificación de patrones automáticos
-✅ ansiedad y respuestas de supervivencia
-✅ autosabotaje y bloqueos internos
-✅ herramientas prácticas para regularte mejor
-✅ ejercicios aplicados
-✅ acompañamiento
-✅ comunidad
-✅ claridad emocional y personal
-
-La inversión es de USD $${price}.
-
-Más que venderte algo rápido, quiero que tomes una decisión con claridad.
-
-Si dentro de 90 días sigues exactamente igual, ¿cómo te haría sentir?`;
+¿Querés que te la envíe?`;
 }
 
-function hotmartMessage(lead, hotmartLink) {
+function problemWelcomeMessage() {
+  return `Gracias por escribirme y contarme eso ❤️
+
+Lo que describís puede sentirse muy agotador, sobre todo cuando la mente intenta estar bien pero el cuerpo reacciona con miedo, tensión, ansiedad o bloqueo.
+
+Antes de hablarte del programa, quiero regalarte una clase corta de 12 minutos para que entiendas por qué el cuerpo puede seguir reaccionando a experiencias que no terminó de procesar.
+
+¿Querés que te la envíe?`;
+}
+
+function videoSentMessage(settings = {}) {
+  const link = videoLink(settings);
+
+  if (!link) {
+    return `Perfecto ❤️
+
+El video gratuito todavía no está configurado en el CRM, pero igual puedo orientarte por acá con mucho cuidado.
+
+Para conocerte mejor, te hago dos preguntitas:
+
+1. ¿Esto que te pasa viene desde hace mucho tiempo o empezó hace poco?
+2. Cuando aparece, ¿lo sentís fuerte en el cuerpo? Por ejemplo: taquicardia, presión en el pecho, nudo en la garganta, tensión, bloqueo, ganas de llorar o miedo.`;
+  }
+
+  return `Perfecto, te lo dejo acá 🎁
+
+Video gratuito:
+${link}
+
+Miralo tranquila cuando puedas. No hace falta que lo veas perfecto ni que entiendas todo de una vez.
+
+Cuando termines, contame qué parte te resonó o si sentiste que algo se parece a lo que te pasa.`;
+}
+
+function videoDeclinedMessage() {
+  return `Está bien, lo respeto totalmente 🌿
+
+Si en otro momento querés entender por qué ciertas emociones, miedos o reacciones del cuerpo se repiten, podés escribirme por acá y te lo envío sin problema.
+
+Te mando un abrazo.`;
+}
+
+function videoWaitingMessage() {
+  return `Perfecto ❤️ Miralo con calma.
+
+Y cuando lo termines, contame si hubo alguna parte que te hizo sentido o si conectó con algo que venís viviendo.
+
+Te leo tranquila por acá.`;
+}
+
+function diagnosticIntroMessage() {
+  return `Gracias por verlo ❤️
+
+Me alegra que te haya hecho sentido. Ahora quiero conocerte un poquito mejor para poder orientarte con más cuidado.
+
+Te hago dos preguntitas rápidas:
+
+1. ¿Esto que te pasa viene desde hace mucho tiempo o empezó hace poco?
+2. Cuando aparece, ¿lo sentís fuerte en el cuerpo? Por ejemplo: taquicardia, presión en el pecho, nudo en la garganta, tensión, bloqueo, ganas de llorar o miedo.
+
+Contame como puedas, no hace falta explicarlo perfecto.`;
+}
+
+function directPainDiagnosticMessage() {
+  return `Gracias por contarme eso ❤️
+
+Lo que decís es importante, porque muchas veces el cuerpo expresa algo que la mente todavía no pudo ordenar. Puede aparecer como ansiedad, miedo, presión en el pecho, ganas de llorar, bloqueo o una reacción que se repite aunque una parte tuya no quiera.
+
+Para orientarte mejor, te hago dos preguntitas:
+
+1. ¿Esto viene desde hace mucho tiempo o empezó hace poco?
+2. Cuando te pasa, ¿sentís una reacción fuerte en el cuerpo?
+
+Con eso puedo decirte mejor por dónde puede venir.`;
+}
+
+function diagnosticLongMessage() {
+  return `Gracias por abrirte y contármelo ❤️
+
+Por lo que me decís, suena a que tu cuerpo aprendió una forma de reaccionar para protegerte. A veces, cuando vivimos algo intenso, doloroso o repetido, el cerebro guarda esa experiencia como una alerta.
+
+Entonces, aunque hoy la situación sea diferente, el sistema nervioso puede activarse como si siguieras en peligro.
+
+No significa que estés mal ni que seas débil. Significa que hay una reacción interna que se puede comprender, trabajar y empezar a liberar.
+
+¿Tiene sentido esto con lo que venís sintiendo?`;
+}
+
+function diagnosticRecentMessage() {
+  return `Gracias por contármelo ❤️
+
+Si esto empezó hace poco, puede estar relacionado con una situación reciente que tu sistema nervioso todavía está intentando procesar. A veces una experiencia no necesita ser enorme para dejar una marca; basta con que haya sido intensa para vos.
+
+Lo importante es observar cómo responde tu cuerpo y qué situaciones activan esa reacción.
+
+¿Sentís que esto empezó después de algo específico?`;
+}
+
+function diagnosticUnknownMessage() {
+  return `Está bien no saberlo. A muchas personas les pasa que sienten ansiedad, miedo, bloqueo o tristeza, pero no logran identificar exactamente de dónde viene.
+
+El primer paso no es tener todas las respuestas, sino aprender a observar cómo reacciona tu cuerpo y en qué momentos se activa.
+
+Eso ya empieza a darte claridad.
+
+¿Querés que te ayude a identificar qué tipo de situación suele activarlo más?`;
+}
+
+function pdfOfferMessage() {
+  return `Me alegra que te haga sentido 🌿
+
+Para ayudarte a entenderlo mejor, te preparé un PDF corto y práctico con información clara sobre cómo se activan estas memorias emocionales y qué podés empezar a observar en vos desde hoy.
+
+No es algo pesado ni complicado. Es una guía simple para que puedas empezar a mirar tu caso con más claridad.
+
+¿Querés que te lo envíe?`;
+}
+
+function pdfSentMessage(settings = {}) {
+  const link = pdfLink(settings);
+
+  if (!link) {
+    return `Claro ❤️
+
+El PDF gratuito todavía no está configurado en el CRM, pero puedo seguir orientándote por acá.
+
+Lo importante ahora es que empieces a reconocer cómo reacciona tu cuerpo y qué situaciones activan esa respuesta.
+
+¿Querés que te cuente cómo funciona el programa Neurotraumas?`;
+  }
+
+  return `Claro, te lo dejo acá ❤️
+
+PDF gratuito:
+${link}
+
+Leelo con calma. Lo importante no es que entiendas todo perfecto, sino que empieces a reconocer cómo reacciona tu cuerpo y qué situaciones activan esa respuesta.
+
+Cuando lo veas, contame qué parte sentiste más cercana a tu caso.`;
+}
+
+function pdfWaitingMessage() {
+  return `Perfecto ❤️ Revisalo tranquila.
+
+Después de leerlo, fijate especialmente si identificás alguna reacción que se repite en vos: miedo, bloqueo, ansiedad, culpa, apego, rechazo, tensión o ganas de llorar.
+
+Cuando quieras, me contás qué parte sentiste más cercana a tu caso.`;
+}
+
+function programIntroMessage() {
+  return `Me alegra que estés tomando esto en serio ❤️
+
+Cuando una reacción emocional se repite, normalmente no alcanza solo con entenderla. Hay que aprender a identificar cuándo se activa, qué la detona, cómo responde el cuerpo y cómo empezar a regularla desde la raíz.
+
+Justamente para eso existe Neurotraumas. Es un programa de 12 semanas donde te acompaño paso a paso a entender y trabajar esas reacciones internas que se activan automáticamente.
+
+¿Querés que te cuente cómo funciona el programa?`;
+}
+
+function offerMessage(settings = {}, lead = null) {
   const name = withName(lead);
-  const link = hotmartLink || 'https://pay.hotmart.com/T103515864E';
+  const product = settings.product_name || 'Neurotraumas';
+  const { normal, special } = prices(settings);
 
-  return `Perfecto${name ? `, ${name}` : ''} 🙌
+  return `Me alegra mucho que hayas llegado hasta acá${name ? `, ${name}` : ''} ❤️
 
-Te comparto el acceso oficial para inscribirte en Neurotraumas™:
+${product} es un programa de 12 semanas diseñado para ayudarte a identificar, comprender y empezar a desactivar esas reacciones emocionales que se activan automáticamente en tu mente y en tu cuerpo.
+
+No es solo teoría. Es un proceso práctico para que puedas entender qué pasa dentro de vos, reconocer tus patrones y aplicar herramientas concretas para recuperar más calma y control interno.
+
+El valor normal es de $${normal} USD, pero por este canal tenés un precio especial de $${special} USD.
+
+Incluye:
+
+✅ 12 semanas de entrenamiento
+✅ Clases en vivo
+✅ Acceso de por vida en Hotmart
+✅ Grupo privado de acompañamiento
+✅ Material práctico y ejercicios
+✅ 2 lives grupales de seguimiento
+✅ Certificado
+✅ Actualizaciones
+✅ Garantía de 14 días
+
+La idea es que no atravieses esto sola, sino con una estructura clara y acompañamiento.
+
+¿Querés que te pase el link de Hotmart para verlo con calma?`;
+}
+
+function priceOnlyMessage(settings = {}) {
+  const { normal, special } = prices(settings);
+  return `Claro. El programa Neurotraumas tiene un valor normal de $${normal} USD, pero por este canal está con precio especial de $${special} USD.
+
+Incluye 12 semanas de entrenamiento, clases en vivo, acceso de por vida, grupo privado, materiales, lives de seguimiento, certificado, actualizaciones y garantía de 14 días.
+
+Si querés, también puedo pasarte el link para que veas todo con detalle en Hotmart.`;
+}
+
+function summaryMessage(settings = {}) {
+  const { special } = prices(settings);
+  return `Claro. Te lo resumo simple:
+
+Neurotraumas es un programa de 12 semanas para aprender a identificar y empezar a desactivar heridas emocionales o traumas que se activan automáticamente en tu cuerpo y en tu mente.
+
+Incluye clases, ejercicios, grupo privado, seguimiento, acceso de por vida y garantía de 14 días.
+
+El precio especial por este canal es de $${special} USD.`;
+}
+
+function freeMaterialsMessage(settings = {}) {
+  const video = videoLink(settings);
+  const pdf = pdfLink(settings);
+
+  if (!video && !pdf) {
+    return `Claro, podés empezar con material gratuito sin problema ❤️
+
+Todavía no veo configurados los enlaces del video y el PDF en el CRM, pero puedo orientarte por acá.
+
+Podemos empezar simple: ¿lo que más te pesa ahora es ansiedad, miedo, tristeza, culpa o sentir que no podés soltar algo?`;
+  }
+
+  return `Claro, podés empezar con el material gratuito sin problema ❤️
+
+Te recomiendo ver primero el video de 12 minutos y luego revisar el PDF. Eso ya te va a dar claridad sobre cómo se activan ciertas heridas emocionales y por qué el cuerpo puede reaccionar con ansiedad, miedo o bloqueo.
+
+${video ? `Video:\n${video}\n\n` : ''}${pdf ? `PDF:\n${pdf}` : ''}`.trim();
+}
+
+function hotmartMessage(lead = null, linkValue = null, settings = {}) {
+  const name = withName(lead);
+  const link = linkValue || hotmartLink(settings);
+  const { special } = prices(settings);
+
+  return `Claro${name ? `, ${name}` : ''} ❤️ Te dejo el link seguro de Hotmart para que puedas ver toda la información y hacer tu inscripción:
 
 ${link}
 
-Cuando completes tu inscripción, guarda la confirmación de Hotmart.
+Recordá que por este canal tenés el precio especial de $${special} USD y garantía de 14 días.
 
-Después de eso te guiaremos con los siguientes pasos.
-
-Si mientras revisas el enlace te surge alguna duda sobre el programa, el precio o cómo funciona, escríbeme por aquí y te ayudo a resolverlo.`;
+Cuando entres, si te surge alguna duda sobre el pago, el acceso o el contenido, escribime por acá y te ayudo.`;
 }
 
 const objectionReplies = {
-  precio: `Te entiendo.
+  precio: `Te entiendo ❤️ Es una inversión importante, y está bien mirarlo con cuidado.
 
-Y es válido pensarlo.
+No quiero que lo tomes desde presión. Más que verlo solo como un gasto, pensalo como una decisión sobre algo que lleva tiempo afectándote.
 
-Más que verlo solo como un pago, míralo como una decisión sobre algo que lleva tiempo afectándote.
+También tenés garantía de 14 días, para entrar, revisar el contenido y sentir si realmente conecta con vos.
 
-Si esto sigue igual 3, 6 o 12 meses más, también tiene un costo emocional.
+¿Querés que te explique exactamente qué incluye para que puedas decidir con más claridad?`,
 
-La pregunta no es solo cuánto cuesta entrar.
+  tiempo: `Te entiendo. Muchas personas llegan sintiendo que no tienen tiempo ni energía.
 
-También es cuánto te está costando seguir cargando con lo mismo.
-
-Si quieres, puedo explicarte qué incluye exactamente para que veas si tiene sentido para ti.`,
-
-  tiempo: `Te entiendo.
-
-Y justo muchas personas llegan sintiendo que no tienen tiempo ni energía.
-
-El programa está pensado para avanzar paso a paso, no para saturarte.
-
-La idea no es exigirte más, sino darte estructura y herramientas para empezar a entender lo que te pasa.
+Por eso Neurotraumas está pensado para avanzar paso a paso, sin saturarte. La idea no es exigirte más, sino darte una estructura para empezar a comprender y regular lo que se activa en vos.
 
 ¿Tu preocupación es más por horarios, constancia o energía emocional?`,
 
-  confianza: `Es una duda completamente normal.
+  confianza: `Es normal tener dudas.
 
-Nadie debería tomar una decisión importante solo por impulso.
+Nadie debería tomar una decisión importante solo por impulso. Neurotraumas no se basa en prometer resultados mágicos, sino en ayudarte a comprender tus patrones, trabajar con herramientas prácticas y acompañarte durante 12 semanas.
 
-Lo que sí puedo decirte es que Neurotraumas™ no se basa en prometer resultados mágicos.
+Además, el pago se hace por Hotmart y tenés garantía de 14 días.
 
-Se basa en ayudarte a comprender tus patrones, trabajar con herramientas prácticas y acompañarte durante 12 semanas.
+¿Querés que te explique cómo funciona el acceso después del pago?`,
 
-No se trata de cambiar de la noche a la mañana.
+  indecision: `Claro, está bien pensarlo con calma 🌿
 
-Se trata de empezar a dejar de repetir lo mismo sin entender por qué.`,
+No quiero que compres desde presión. Solo te dejo una pregunta para mirarlo con honestidad:
 
-  indecision: `Claro, piénsalo con calma.
-
-Solo te dejo una pregunta para que lo mires con honestidad:
-
-¿Lo quieres pensar porque necesitas revisar algo concreto, o porque una parte de ti tiene miedo de empezar?`
+¿Lo querés pensar porque necesitás revisar algo concreto, o porque una parte tuya tiene miedo de empezar?`
 };
 
 function crisisMessage() {
-  return `Siento mucho que estés pasando por algo así.
+  return `Siento mucho que estés pasando por esto. Lo más importante ahora es tu seguridad.
 
-En este momento lo más importante es tu seguridad, no venderte nada.
+Por favor, no te quedes sola con esto: buscá a una persona de confianza ahora mismo o comunicate con emergencias o una línea de ayuda de tu país.
 
-Por favor busca ayuda inmediata con una persona cercana, un profesional de salud mental o servicios de emergencia de tu país. Si sientes que podrías hacerte daño, no te quedes solo(a) y acude a emergencias ahora mismo.
+Si sentís que podés hacerte daño o estás en peligro inmediato, llamá a emergencias en este momento.
 
-Puedo quedarme aquí para acompañarte con calma mientras buscas ayuda, pero esto no reemplaza apoyo profesional urgente.`;
+Yo puedo acompañarte con palabras, pero en una situación así necesitás apoyo humano directo y urgente.`;
 }
 
 function deleteMemoryMessage() {
@@ -248,43 +338,51 @@ Solo mantendremos el registro básico necesario para no volver a contactarte si 
 }
 
 function stopMessage() {
-  return `Listo, no te volveremos a escribir por este medio.`;
+  return `Está bien, lo respeto totalmente.
+
+Gracias por haber escrito y te deseo mucha calma en tu proceso 🌿`;
 }
 
 function humanTakeoverMessage() {
   return `Claro. Voy a dejar esta conversación para que una persona del equipo pueda ayudarte directamente.`;
 }
 
-function fallbackMessage() {
-  return `Hola 👋
-Gracias por escribirme.
-
-Vi tu interés en Neurotraumas™.
-
-Antes de pasarte el acceso, quiero entender algo importante para orientarte mejor.
-
-Dime, ¿qué sientes que hoy te está afectando más?
-
-1️⃣ Ansiedad constante
-2️⃣ Autosabotaje
-3️⃣ Pensamientos repetitivos
-4️⃣ Relaciones difíciles
-5️⃣ Me siento bloqueado(a)
-6️⃣ Solo quiero información del programa`;
+function botIdentityMessage() {
+  return `Soy el asistente virtual del equipo de Marisa, pero estoy acá para orientarte con mucho cuidado y ayudarte a resolver tus dudas.`;
 }
 
-function postLinkFallback(lead, hotmartLink) {
-  const link = hotmartLink || 'https://pay.hotmart.com/T103515864E';
-  return `Te entiendo.
+function softCloseMessage() {
+  return `Perfecto ❤️ Revisalo con calma.
 
-Solo para no perder el hilo: estábamos viendo tu inscripción a Neurotraumas™ y las dudas que podían frenarte para empezar.
-
-¿Quieres que te ayude a resolver algo específico antes de avanzar con el acceso?
-
-${link}`;
+No tenés que decidir desde la presión. Si te surge alguna duda sobre el contenido, el acceso o el pago, me escribís por acá y te ayudo.`;
 }
 
-function paymentReportedMessage(lead) {
+function farewellMessage() {
+  return `Perfecto ❤️ Gracias por escribirme.
+
+Revisalo con calma y, si en otro momento querés retomar o te surge alguna duda, podés escribirme por acá.
+
+Te mando un abrazo.`;
+}
+
+function unclearMessage() {
+  return `Te entiendo. A veces cuesta poner en palabras lo que uno siente.
+
+Podemos ir simple: ¿lo que más te pesa ahora es ansiedad, miedo, tristeza, culpa o sentir que no podés soltar algo?`;
+}
+
+function fallbackMessage(settings = {}, lead = null) {
+  return firstMessage(settings, lead);
+}
+
+function postLinkFallback(lead = null) {
+  const name = withName(lead);
+  return `Perfecto${name ? `, ${name}` : ''} ❤️
+
+Revisalo tranquila. Si al entrar te surge alguna duda sobre el pago, el acceso o el contenido, me escribís por acá y te ayudo.`;
+}
+
+function paymentReportedMessage(lead = null) {
   const name = withName(lead);
   return `Excelente${name ? `, ${name}` : ''} 🙌
 
@@ -295,9 +393,72 @@ Para ayudarte con el acceso, por favor envíame la confirmación de Hotmart o el
 Luego te guiaremos con los siguientes pasos.`;
 }
 
+const painReplies = {
+  ansiedad: directPainDiagnosticMessage(),
+  autosabotaje: directPainDiagnosticMessage(),
+  pensamientos_repetitivos: directPainDiagnosticMessage(),
+  relaciones_dificiles: directPainDiagnosticMessage(),
+  bloqueo: directPainDiagnosticMessage(),
+  informacion: infoWelcomeMessage()
+};
+
+function diagnosticQuestion1() {
+  return directPainDiagnosticMessage();
+}
+
+function diagnosticQuestion2() {
+  return `¿Hace cuánto sentís que esto viene afectándote: empezó hace poco, hace más de un año o viene desde hace mucho tiempo?`;
+}
+
+function diagnosticQuestion3() {
+  return `¿Ya intentaste algo para trabajarlo, como terapia, cursos, meditación o alguna herramienta emocional?`;
+}
+
+function diagnosticQuestion4() {
+  return `Del 1 al 10, ¿qué tan urgente es para vos empezar a cambiar esto?`;
+}
+
+function askName() {
+  return `Para orientarte mejor, ¿me decís tu nombre?`;
+}
+
+function askEmail(lead) {
+  const name = withName(lead);
+  return `Perfecto${name ? `, ${name}` : ''}. ¿A qué correo te puedo enviar la información si querés revisarla con calma?`;
+}
+
+function askEmailAgain() {
+  return `Creo que ese correo no quedó bien escrito. ¿Me lo podés enviar nuevamente?`;
+}
+
+function askUsername() {
+  return `¿Y por qué red llegaste o cuál es tu usuario? Puede ser Instagram, Facebook, TikTok o WhatsApp.`;
+}
+
+function askPhone() {
+  return `Para dejar tu registro completo y poder darte seguimiento si se corta la conversación, ¿me compartís tu número de WhatsApp con código de país?`;
+}
+
 module.exports = {
   firstMessage,
   greetingMessage,
+  infoWelcomeMessage,
+  problemWelcomeMessage,
+  videoSentMessage,
+  videoDeclinedMessage,
+  videoWaitingMessage,
+  diagnosticIntroMessage,
+  directPainDiagnosticMessage,
+  diagnosticLongMessage,
+  diagnosticRecentMessage,
+  diagnosticUnknownMessage,
+  pdfOfferMessage,
+  pdfSentMessage,
+  pdfWaitingMessage,
+  programIntroMessage,
+  priceOnlyMessage,
+  summaryMessage,
+  freeMaterialsMessage,
   painReplies,
   diagnosticQuestion1,
   diagnosticQuestion2,
@@ -315,6 +476,10 @@ module.exports = {
   deleteMemoryMessage,
   stopMessage,
   humanTakeoverMessage,
+  botIdentityMessage,
+  softCloseMessage,
+  farewellMessage,
+  unclearMessage,
   fallbackMessage,
   postLinkFallback,
   paymentReportedMessage
