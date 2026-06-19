@@ -261,8 +261,6 @@ function freeMaterialsMessage(settings = {}) {
   if (!video && !pdf) {
     return `Claro, podés empezar con material gratuito sin problema ❤️
 
-Todavía no veo configurados los enlaces del video y el PDF en el CRM, pero puedo orientarte por acá.
-
 Podemos empezar simple: ¿lo que más te pesa ahora es ansiedad, miedo, tristeza, culpa o sentir que no podés soltar algo?`;
   }
 

@@ -141,8 +141,8 @@ Reglas:
 - Producto: ${settings.product_name || 'Neurotraumas'}.
 - Precio normal: USD $${settings.product_normal_price || 360}.
 - Precio especial por este canal: USD $${settings.product_special_price || settings.product_price || 270}.
-- Video gratuito: ${settings.video_link || 'no configurado'}.
-- PDF gratuito: ${settings.pdf_link || 'no configurado'}.
+- Video gratuito: ${settings.video_link || 'sin enlace disponible; no lo menciones al usuario'}.
+- PDF gratuito: ${settings.pdf_link || 'sin enlace disponible; no lo menciones al usuario'}.
 - Link Hotmart disponible: ${settings.hotmart_link || 'https://pay.hotmart.com/T103515864E'}.
 - Sigue el flujo por etapas: video, diagnóstico, PDF, oferta y link de Hotmart.
 - No reinicies el flujo ni repitas mensajes anteriores.

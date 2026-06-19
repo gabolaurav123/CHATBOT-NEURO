@@ -8,8 +8,8 @@ Contexto:
 - Producto: ${settings.product_name || 'Neurotraumas'}.
 - Precio normal: USD $${settings.product_normal_price || 360}.
 - Precio especial por este canal: USD $${settings.product_special_price || settings.product_price || 270}.
-- Video gratuito: ${settings.video_link || 'no configurado'}.
-- PDF gratuito: ${settings.pdf_link || 'no configurado'}.
+- Video gratuito: ${settings.video_link || 'sin enlace disponible; no lo menciones al usuario'}.
+- PDF gratuito: ${settings.pdf_link || 'sin enlace disponible; no lo menciones al usuario'}.
 - Hotmart: ${settings.hotmart_link || 'https://pay.hotmart.com/T103515864E'}.
 - Etapa actual: ${stage || 'inicio'}.
 - No prometas curas, no diagnostiques, no reemplaces terapia, no inventes descuentos, no inventes cupos.
@@ -37,6 +37,74 @@ ${userMessage}`;
     temperature: 0.7,
     maxOutputTokens: 350
   });
+}
+
+async function generateStageReply({
+  lead,
+  memory,
+  history,
+  userMessage,
+  stage,
+  settings,
+  objective,
+  fallback
+}) {
+  const prompt = `Redacta la respuesta de WhatsApp como Marisa para esta etapa exacta del flujo Neurotraumas.
+
+Mensaje del usuario:
+${userMessage}
+
+Etapa que debe respetarse:
+${stage || 'inicio'}
+
+Objetivo de esta respuesta:
+${objective}
+
+Reglas obligatorias:
+- Responde directamente a lo que el usuario acaba de decir.
+- No reinicies la conversación.
+- No repitas el último mensaje del bot.
+- No copies literalmente plantillas ni mensajes previos.
+- No mandes Hotmart salvo que el objetivo diga explícitamente que corresponde enviar el link de pago.
+- Si el usuario solo dice "sí", interpreta ese "sí" según la etapa actual.
+- Avanza solo un paso del flujo.
+- Máximo una pregunta al final, salvo diagnóstico donde puedes hacer dos.
+- Tono: Marisa, cálida, humana, clara y contenedora.
+- No prometas curas, no diagnostiques y no digas que reemplaza terapia.
+- No inventes descuentos, cupos ni urgencia falsa.
+- Precio normal: USD $${settings.product_normal_price || 360}.
+- Precio especial: USD $${settings.product_special_price || settings.product_price || 270}.
+- Video gratuito: ${settings.video_link || 'sin enlace disponible; no lo menciones al usuario'}.
+- PDF gratuito: ${settings.pdf_link || 'sin enlace disponible; no lo menciones al usuario'}.
+- Hotmart: ${settings.hotmart_link || 'https://pay.hotmart.com/T103515864E'}.
+
+Último mensaje del bot:
+${lead && lead.last_bot_message ? lead.last_bot_message : 'Sin mensaje previo'}
+
+Lead:
+${JSON.stringify(lead || {}, null, 2)}
+
+Memoria:
+${JSON.stringify(memory || {}, null, 2)}
+
+Historial reciente:
+${JSON.stringify(history || [], null, 2)}
+
+Contenido mínimo que debe cubrir si aplica, pero sin copiarlo literal:
+${fallback || ''}`;
+
+  try {
+    const reply = await generateText({
+      prompt,
+      temperature: 0.85,
+      maxOutputTokens: 450
+    });
+
+    if (!reply || !reply.trim()) return fallback;
+    return reply.trim();
+  } catch (error) {
+    return fallback;
+  }
 }
 
 async function generatePostLinkReply({ lead, memory, history, userMessage, settings }) {
@@ -82,5 +150,6 @@ ${userMessage}`;
 
 module.exports = {
   generateHumanReply,
+  generateStageReply,
   generatePostLinkReply
 };
