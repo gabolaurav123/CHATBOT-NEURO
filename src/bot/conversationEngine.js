@@ -283,6 +283,20 @@ function result({ lead, conversation, reply, whatsappId }) {
   };
 }
 
+function isRecoverableBotControl(lead) {
+  const brokenAutomationText = [
+    lead && lead.notes,
+    lead && lead.last_bot_message
+  ].filter(Boolean).join('\n');
+
+  return Boolean(
+    lead
+    && (lead.human_takeover || lead.bot_paused)
+    && !lead.crisis_detected
+    && /AI failed:|IA no esta configurada|problema tecnico|te leo/i.test(brokenAutomationText)
+  );
+}
+
 function aiUnavailableReply(error) {
   const missingKey = /GEMINI_API_KEY/i.test(String(error && error.message ? error.message : error));
 
@@ -337,12 +351,48 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
     });
   }
 
+  if (isRecoverableBotControl(lead)) {
+    console.log('Auto releasing stale bot control state', {
+      leadId: lead.id,
+      whatsapp_id: lead.whatsapp_id,
+      bot_paused: lead.bot_paused,
+      human_takeover: lead.human_takeover,
+      funnel_stage: lead.funnel_stage
+    });
+
+    const releaseFields = {
+      bot_paused: false,
+      human_takeover: false,
+      notes: [
+        lead.notes,
+        `Auto-released stale bot control state at ${new Date().toISOString()}`
+      ].filter(Boolean).join('\n').slice(0, 2000)
+    };
+
+    if (['humano', 'pausado'].includes(lead.funnel_stage)) {
+      releaseFields.funnel_stage = 'inicio';
+    }
+
+    lead = await leadService.updateLead(lead.id, {
+      ...releaseFields
+    });
+  }
+
   console.log('Bot control state', {
     bot_paused: lead.bot_paused,
     human_takeover: lead.human_takeover
   });
 
   if (lead.human_takeover || lead.bot_paused) {
+    console.log('Bot response skipped by control state', {
+      leadId: lead.id,
+      whatsapp_id: lead.whatsapp_id,
+      bot_paused: lead.bot_paused,
+      human_takeover: lead.human_takeover,
+      crisis_detected: lead.crisis_detected,
+      funnel_stage: lead.funnel_stage
+    });
+
     return result({ lead, conversation, reply: null, whatsappId });
   }
 

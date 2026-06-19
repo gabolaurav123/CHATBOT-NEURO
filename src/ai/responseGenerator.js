@@ -203,20 +203,26 @@ async function generateAIConversationTurn(context) {
     maxOutputTokens: 1200
   }), context.currentStage);
 
-  if (!first.reply || !isRepeatedReply(first.reply, context.lead)) {
+  if (first.reply && !isRepeatedReply(first.reply, context.lead)) {
     return first;
   }
 
   const second = normalizeDecision(await generateJson({
     prompt: buildPrompt({
       ...context,
-      retryReason: 'La respuesta anterior era igual o demasiado parecida al ultimo mensaje del bot. Genera una respuesta nueva, especifica y coherente con el ultimo mensaje del usuario.'
+      retryReason: first.reply
+        ? 'La respuesta anterior era igual o demasiado parecida al ultimo mensaje del bot. Genera una respuesta nueva, especifica y coherente con el ultimo mensaje del usuario.'
+        : 'La respuesta anterior vino vacia. Debes generar un reply natural para WhatsApp. No devuelvas reply null.'
     }),
     systemInstruction: SYSTEM_PROMPT,
     model: context.settings && context.settings.gemini_model,
     temperature: 0.85,
     maxOutputTokens: 1200
   }), context.currentStage);
+
+  if (!second.reply) {
+    throw new Error('AI returned an empty reply');
+  }
 
   return second;
 }

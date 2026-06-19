@@ -87,15 +87,23 @@ async function handleIncomingMessage(message) {
       rawPayload: toRawPayload(message, body)
     });
 
-    if (!result || !result.reply) return;
+    if (!result || !result.reply) {
+      console.log('No WhatsApp reply generated', {
+        remoteJid,
+        leadId: result && result.leadId,
+        conversationId: result && result.conversationId
+      });
+      return;
+    }
 
+    const replyJid = result.whatsappId || identity.whatsapp_id;
     try {
-      console.log('Sending WhatsApp message', { whatsapp_id: result.whatsappId || identity.whatsapp_id });
-      await whatsappService.sendMessage(result.whatsappId || identity.whatsapp_id, result.reply);
-      console.log('WhatsApp message sent');
+      console.log('Sending WhatsApp reply', { remoteJid: replyJid });
+      await whatsappService.sendMessage(replyJid, result.reply);
+      console.log('WhatsApp reply sent', { remoteJid: replyJid });
     } catch (error) {
-      console.error('WhatsApp send failed', {
-        whatsapp_id: result.whatsappId || identity.whatsapp_id,
+      console.error('Failed to send WhatsApp reply', {
+        remoteJid: replyJid,
         error: error.message,
         stack: error.stack
       });
@@ -105,7 +113,7 @@ async function handleIncomingMessage(message) {
     await messageService.storeMessage({
       leadId: result.leadId,
       conversationId: result.conversationId,
-      whatsappId: result.whatsappId || identity.whatsapp_id,
+      whatsappId: replyJid,
       direction: 'outbound',
       body: result.reply,
       rawPayload: { automated: true, provider: 'baileys' }
