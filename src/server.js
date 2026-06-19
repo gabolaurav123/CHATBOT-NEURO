@@ -30,7 +30,15 @@ function createApp() {
   app.use(cors());
   app.use(express.json({ limit: '2mb' }));
 
-  app.use('/api/health', adminAuth, healthRoutes);
+  app.get('/', (req, res) => {
+    res.json({
+      ok: true,
+      service: 'chatbot-neuro',
+      message: 'API running. Open /api/health to check public runtime status.'
+    });
+  });
+
+  app.use('/api/health', healthRoutes);
   app.use('/api/whatsapp', adminAuth, whatsappRoutes);
   app.use('/api/qr', adminAuth, qrRoutes);
   app.use('/api/leads', adminAuth, leadsRoutes);

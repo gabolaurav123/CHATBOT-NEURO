@@ -7,6 +7,14 @@ const router = express.Router();
 router.get('/', async (req, res, next) => {
   try {
     const whatsapp = await whatsappService.getStatus();
+    const isAdmin = Boolean(env.ADMIN_API_KEY && req.header('x-admin-api-key') === env.ADMIN_API_KEY);
+    const publicWhatsApp = {
+      status: whatsapp.status,
+      connected: whatsapp.status === 'connected',
+      lastConnectedAt: whatsapp.lastConnectedAt,
+      lastQrAt: whatsapp.lastQrAt,
+      lastDisconnectedAt: whatsapp.lastDisconnectedAt
+    };
 
     res.json({
       ok: true,
@@ -23,7 +31,7 @@ router.get('/', async (req, res, next) => {
         nodeEnv: env.NODE_ENV,
         port: env.PORT
       },
-      whatsapp
+      whatsapp: isAdmin ? whatsapp : publicWhatsApp
     });
   } catch (error) {
     next(error);
