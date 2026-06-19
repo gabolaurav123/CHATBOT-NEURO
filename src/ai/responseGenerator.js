@@ -1,4 +1,4 @@
-const { generateJson } = require('./geminiClient');
+const { generateJson, generateText } = require('./geminiClient');
 const { SYSTEM_PROMPT } = require('./systemPrompt');
 
 const VALID_STAGES = [
@@ -194,37 +194,182 @@ function normalizeDecision(raw, currentStage) {
   };
 }
 
-async function generateAIConversationTurn(context) {
-  const first = normalizeDecision(await generateJson({
-    prompt: buildPrompt(context),
-    systemInstruction: SYSTEM_PROMPT,
-    model: context.settings && context.settings.gemini_model,
-    temperature: 0.7,
-    maxOutputTokens: 1200
-  }), context.currentStage);
+function cleanTextReply(value) {
+  const text = String(value || '').trim();
+  if (!text) return null;
 
-  if (first.reply && !isRepeatedReply(first.reply, context.lead)) {
-    return first;
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed.reply === 'string' && parsed.reply.trim()) {
+      return parsed.reply.trim();
+    }
+  } catch (error) {
+    // The fallback usually returns plain WhatsApp text, not JSON.
   }
 
-  const second = normalizeDecision(await generateJson({
-    prompt: buildPrompt({
-      ...context,
-      retryReason: first.reply
-        ? 'La respuesta anterior era igual o demasiado parecida al ultimo mensaje del bot. Genera una respuesta nueva, especifica y coherente con el ultimo mensaje del usuario.'
-        : 'La respuesta anterior vino vacia. Debes generar un reply natural para WhatsApp. No devuelvas reply null.'
-    }),
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) {
+    try {
+      const parsed = JSON.parse(fenced[1].trim());
+      if (parsed && typeof parsed.reply === 'string' && parsed.reply.trim()) {
+        return parsed.reply.trim();
+      }
+    } catch (error) {
+      return fenced[1].trim();
+    }
+  }
+
+  return text;
+}
+
+function compactLeadContext(lead = {}) {
+  return {
+    name: lead.name,
+    display_phone: lead.display_phone,
+    main_pain: lead.main_pain,
+    emotional_response: lead.emotional_response,
+    problem_duration: lead.problem_duration,
+    tried_before: lead.tried_before,
+    urgency: lead.urgency,
+    funnel_stage: lead.funnel_stage,
+    lead_status: lead.lead_status,
+    main_objection: lead.main_objection,
+    objection_type: lead.objection_type,
+    purchase_intent: lead.purchase_intent,
+    hotmart_link_sent: lead.hotmart_link_sent,
+    payment_status: lead.payment_status,
+    last_user_message: lead.last_user_message,
+    last_bot_message: lead.last_bot_message
+  };
+}
+
+function buildTextFallbackPrompt({
+  lead,
+  memory,
+  history,
+  userMessage,
+  currentStage,
+  settings
+}, error) {
+  const hotmartLink = settings.hotmart_link || 'https://pay.hotmart.com/T103515864E';
+  const specialPrice = settings.product_special_price || settings.product_price || '270';
+
+  return `Genera SOLO el texto final para responder por WhatsApp como Marisa, de Neurotraumas.
+
+Contexto:
+- Producto: Neurotraumas.
+- Precio especial: USD ${specialPrice}.
+- Link oficial de Hotmart, solo si realmente corresponde enviarlo: ${hotmartLink}.
+- Etapa actual: ${currentStage || 'inicio'}.
+- Error interno anterior: ${error && error.message ? error.message : 'respuesta estructurada vacia o invalida'}.
+
+Reglas:
+- No devuelvas JSON.
+- No digas que eres IA.
+- No menciones errores tecnicos, API, Gemini, backend ni configuracion.
+- No repitas el ultimo mensaje del bot.
+- Responde directamente a lo que el usuario acaba de escribir.
+- Si el usuario dice "si", interpreta ese "si" segun el historial; no vendas automaticamente.
+- Si el usuario saluda, responde natural y abre una conversacion breve.
+- Maximo una pregunta al final.
+- Si hay crisis o autolesion, prioriza seguridad y no vendas.
+
+Lead:
+${JSON.stringify(compactLeadContext(lead), null, 2)}
+
+Memoria:
+${JSON.stringify(memory || {}, null, 2)}
+
+Historial reciente:
+${JSON.stringify(history || [], null, 2)}
+
+Mensaje actual del usuario:
+${userMessage}
+
+Respuesta final para WhatsApp:`;
+}
+
+function emptyActions() {
+  return {
+    send_hotmart_link: false,
+    create_payment: false,
+    create_payment_followups: false,
+    payment_reported: false,
+    pause_bot: false,
+    human_takeover: false,
+    delete_memory: false,
+    stop_contact: false
+  };
+}
+
+async function generateTextFallbackTurn(context, error) {
+  const text = await generateText({
+    prompt: buildTextFallbackPrompt(context, error),
     systemInstruction: SYSTEM_PROMPT,
     model: context.settings && context.settings.gemini_model,
     temperature: 0.85,
-    maxOutputTokens: 1200
-  }), context.currentStage);
+    maxOutputTokens: 700
+  });
+  const reply = cleanTextReply(text);
 
-  if (!second.reply) {
-    throw new Error('AI returned an empty reply');
+  if (!reply) {
+    throw error || new Error('AI returned an empty text reply');
   }
 
-  return second;
+  return {
+    reply,
+    next_stage: normalizeStage(context.currentStage, 'inicio'),
+    lead_fields: {},
+    memory_patch: {
+      last_intent: 'ai_text_fallback'
+    },
+    actions: emptyActions()
+  };
+}
+
+async function generateAIConversationTurn(context) {
+  let structuredError = null;
+
+  try {
+    const first = normalizeDecision(await generateJson({
+      prompt: buildPrompt(context),
+      systemInstruction: SYSTEM_PROMPT,
+      model: context.settings && context.settings.gemini_model,
+      temperature: 0.7,
+      maxOutputTokens: 1200
+    }), context.currentStage);
+
+    if (first.reply && !isRepeatedReply(first.reply, context.lead)) {
+      return first;
+    }
+
+    const second = normalizeDecision(await generateJson({
+      prompt: buildPrompt({
+        ...context,
+        retryReason: first.reply
+          ? 'La respuesta anterior era igual o demasiado parecida al ultimo mensaje del bot. Genera una respuesta nueva, especifica y coherente con el ultimo mensaje del usuario.'
+          : 'La respuesta anterior vino vacia. Debes generar un reply natural para WhatsApp. No devuelvas reply null.'
+      }),
+      systemInstruction: SYSTEM_PROMPT,
+      model: context.settings && context.settings.gemini_model,
+      temperature: 0.85,
+      maxOutputTokens: 1200
+    }), context.currentStage);
+
+    if (!second.reply) {
+      throw new Error('AI returned an empty reply');
+    }
+
+    return second;
+  } catch (error) {
+    structuredError = error;
+    console.error('Gemini structured turn failed; retrying with text fallback', {
+      error: error.message,
+      stack: error.stack
+    });
+  }
+
+  return generateTextFallbackTurn(context, structuredError);
 }
 
 module.exports = {

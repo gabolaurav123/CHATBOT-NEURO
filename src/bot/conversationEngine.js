@@ -297,6 +297,29 @@ function isRecoverableBotControl(lead) {
   );
 }
 
+function isRestartMessage(body) {
+  return /^(hola|buenas|buenos dias|buenas tardes|buenas noches|neuro|info|ayuda|inicio|empezar|reiniciar)$/i
+    .test(String(body || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim());
+}
+
+function shouldResetStaleSalesState(lead, body) {
+  return Boolean(
+    isRestartMessage(body)
+    && lead
+    && !lead.crisis_detected
+    && /AI failed:|IA no esta configurada|problema tecnico|te leo/i.test(String([
+      lead.notes,
+      lead.last_bot_message
+    ].filter(Boolean).join('\n')))
+    && (
+      lead.hotmart_link_sent
+      || lead.purchase_intent
+      || ['pago_reportado', 'link_pago_enviado', 'post_link_conversacion', 'oferta_presentada'].includes(lead.funnel_stage)
+      || lead.payment_status === 'reportado'
+    )
+  );
+}
+
 function aiUnavailableReply(error) {
   const missingKey = /GEMINI_API_KEY/i.test(String(error && error.message ? error.message : error));
 
@@ -352,12 +375,15 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
   }
 
   if (isRecoverableBotControl(lead)) {
+    const resetSalesState = shouldResetStaleSalesState(lead, body);
+
     console.log('Auto releasing stale bot control state', {
       leadId: lead.id,
       whatsapp_id: lead.whatsapp_id,
       bot_paused: lead.bot_paused,
       human_takeover: lead.human_takeover,
-      funnel_stage: lead.funnel_stage
+      funnel_stage: lead.funnel_stage,
+      resetSalesState
     });
 
     const releaseFields = {
@@ -373,9 +399,29 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
       releaseFields.funnel_stage = 'inicio';
     }
 
+    if (resetSalesState) {
+      Object.assign(releaseFields, {
+        funnel_stage: 'inicio',
+        payment_status: 'pendiente',
+        hotmart_link_sent: false,
+        hotmart_link_sent_at: null,
+        purchase_intent: false,
+        offer_presented: false,
+        offer_presented_at: null,
+        closed_conversation: false,
+        main_objection: null,
+        objection_type: null
+      });
+    }
+
     lead = await leadService.updateLead(lead.id, {
       ...releaseFields
     });
+
+    if (resetSalesState) {
+      await memoryService.deleteMemoryByLeadId(lead.id);
+      await updateConversationState({ conversation, nextStage: 'inicio' });
+    }
   }
 
   console.log('Bot control state', {
@@ -421,6 +467,12 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
       settings
     });
   } catch (error) {
+    console.error('AI conversation turn failed', {
+      leadId: lead.id,
+      error: error.message,
+      stack: error.stack
+    });
+
     logger.error('AI conversation turn failed', {
       leadId: lead.id,
       error: error.message,
