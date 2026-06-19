@@ -1,5 +1,51 @@
-const { generateText, safeGenerateText } = require('./geminiClient');
+const { generateText } = require('./geminiClient');
 const { postLinkFallback } = require('../bot/flows');
+
+function contextualFallbackReply({ lead, userMessage, stage, settings }) {
+  const text = String(userMessage || '').trim();
+  const lower = text.toLowerCase();
+  const price = settings.product_special_price || settings.product_price || 270;
+
+  if (/^s[ií]$|^ok$|^dale$|^claro$/i.test(text)) {
+    if (stage === 'video_ofrecido' || stage === 'inicio') {
+      return `Perfecto ❤️ Vamos paso a paso.
+
+Para orientarte mejor, contame algo simple: ¿esto que te pasa viene desde hace mucho tiempo o empezó hace poco?`;
+    }
+
+    if (stage === 'pdf_ofrecido') {
+      return `Perfecto ❤️ Te acompaño con eso.
+
+Mientras revisás el material, fijate especialmente si aparece ansiedad, bloqueo, culpa, miedo o una reacción fuerte en el cuerpo. ¿Cuál de esas sentís más cercana a tu caso?`;
+    }
+
+    if (stage === 'program_intro') {
+      return `Claro ❤️ Te cuento de forma simple.
+
+Neurotraumas es un proceso de 12 semanas para comprender qué se activa dentro de vos, reconocer patrones emocionales repetidos y empezar a trabajarlos con herramientas prácticas.
+
+¿Querés que te explique qué incluye y cómo funciona?`;
+    }
+  }
+
+  if (/precio|cu[aá]nto|costo|valor|inversi[oó]n/.test(lower)) {
+    return `Claro. El programa tiene un valor normal de $360 USD, pero por este canal está con precio especial de $${price} USD.
+
+Incluye 12 semanas de entrenamiento, clases en vivo, acceso de por vida, grupo privado, materiales, seguimiento, certificado, actualizaciones y garantía de 14 días.
+
+¿Querés que te cuente cómo está organizado por dentro?`;
+  }
+
+  if (/gracias|ok|perfecto|lo veo|despu[eé]s/.test(lower)) {
+    return `Perfecto ❤️ Revisalo con calma.
+
+Si te surge una duda concreta sobre el contenido, el acceso o el proceso, me escribís por acá y lo vemos paso a paso.`;
+  }
+
+  return `Te leo ❤️
+
+Para responderte bien y no darte algo genérico, contame un poquito más: ¿qué es lo que más te está pesando ahora con esto?`;
+}
 
 async function generateHumanReply({ lead, memory, history, userMessage, stage, settings }) {
   const prompt = `Genera una respuesta corta, natural y empática para WhatsApp como Marisa, guía del programa Neurotraumas.
@@ -32,11 +78,19 @@ ${JSON.stringify(history || [], null, 2)}
 Mensaje del usuario:
 ${userMessage}`;
 
-  return safeGenerateText({
-    prompt,
-    temperature: 0.7,
-    maxOutputTokens: 350
-  });
+  try {
+    const reply = await generateText({
+      prompt,
+      temperature: 0.7,
+      maxOutputTokens: 350
+    });
+
+    return reply && reply.trim()
+      ? reply.trim()
+      : contextualFallbackReply({ lead, userMessage, stage, settings });
+  } catch (error) {
+    return contextualFallbackReply({ lead, userMessage, stage, settings });
+  }
 }
 
 async function generateStageReply({
@@ -151,5 +205,6 @@ ${userMessage}`;
 module.exports = {
   generateHumanReply,
   generateStageReply,
+  contextualFallbackReply,
   generatePostLinkReply
 };

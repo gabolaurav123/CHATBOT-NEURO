@@ -5,7 +5,12 @@ const settingsService = require('../services/settingsService');
 const paymentService = require('../services/paymentService');
 const followupService = require('../services/followupService');
 const { classifyUserMessage } = require('../ai/intentClassifier');
-const { generateHumanReply, generateStageReply, generatePostLinkReply } = require('../ai/responseGenerator');
+const {
+  generateHumanReply,
+  generateStageReply,
+  generatePostLinkReply,
+  contextualFallbackReply
+} = require('../ai/responseGenerator');
 const { generateBotReply } = require('../ai/geminiClient');
 const { normalizeUserProvidedPhone } = require('../utils/normalizePhone');
 const { addHours } = require('../utils/date');
@@ -69,8 +74,78 @@ function memoryObject(memoryRow) {
   return memoryRow && memoryRow.memory ? memoryRow.memory : {};
 }
 
-function activeStep(lead, conversation, memory) {
-  return memory.current_step || conversation.current_step || lead.funnel_stage || 'inicio';
+function lastOutboundMessage(history = []) {
+  return [...(history || [])].reverse().find((item) => item.direction === 'outbound' && item.body);
+}
+
+function inferStepFromText(text) {
+  const value = String(text || '').toLowerCase();
+
+  if (!value) return null;
+  if (/(quer[eé]s que te env[ií]e el video|quer[eé]s que te la env[ií]e|clase corta de 12 minutos|video ahora)/i.test(value)) {
+    return 'video_offered';
+  }
+  if (/(video gratuito|miralo tranquila|miralo con calma|cuando termines)/i.test(value)) {
+    return 'video_sent';
+  }
+  if (/(te hago dos preguntitas|viene desde hace mucho|empez[oó] hace poco|reacci[oó]n fuerte en el cuerpo)/i.test(value)) {
+    return 'diagnostic_orientation';
+  }
+  if (/(tiene sentido esto|tiene sentido con lo que ven[ií]s sintiendo|memoria emocional|sistema nervioso puede activarse)/i.test(value)) {
+    return 'discovery';
+  }
+  if (/(pdf corto|pdf gratuito|quer[eé]s que te lo env[ií]e|gu[ií]a simple)/i.test(value)) {
+    return 'pdf_offered';
+  }
+  if (/(leelo con calma|cuando lo veas|parte sentiste m[aá]s cercana)/i.test(value)) {
+    return 'pdf_sent';
+  }
+  if (/(quer[eé]s que te cuente c[oó]mo funciona|existe neurotraumas)/i.test(value)) {
+    return 'program_intro';
+  }
+  if (/(precio especial|valor normal|incluye:|garant[ií]a de 14 d[ií]as|link de hotmart para verlo)/i.test(value)) {
+    return 'offer_presented';
+  }
+  if (/(pay\.hotmart\.com|link seguro de hotmart|inscripci[oó]n)/i.test(value)) {
+    return 'payment_link_sent';
+  }
+
+  return null;
+}
+
+function inferStepFromHistory(history = []) {
+  const outbound = lastOutboundMessage(history);
+  return inferStepFromText(outbound && outbound.body);
+}
+
+function stepToFunnelStage(step) {
+  const map = {
+    video_offered: 'video_ofrecido',
+    video_sent: 'video_enviado',
+    diagnostic_orientation: 'diagnostico_orientativo',
+    discovery: 'descubrimiento_emocional',
+    pdf_offered: 'pdf_ofrecido',
+    pdf_sent: 'pdf_enviado',
+    program_intro: 'descubrimiento_emocional',
+    offer_presented: 'oferta_presentada',
+    payment_link_sent: 'link_pago_enviado',
+    post_link_conversation: 'post_link_conversacion',
+    payment_reported: 'pago_reportado',
+    closed: 'cierre_frio'
+  };
+
+  return map[step] || step || 'inicio';
+}
+
+function activeStep(lead, conversation, memory, history = []) {
+  const storedStep = memory.current_step || conversation.current_step || lead.funnel_stage || 'inicio';
+  const inferredStep = inferStepFromHistory(history);
+
+  if ((!storedStep || storedStep === 'inicio') && inferredStep) {
+    return inferredStep;
+  }
+
+  return storedStep;
 }
 
 async function updateLeadAndMemory({ lead, conversation, leadFields, memoryPatch, summary, currentStep }) {
@@ -132,8 +207,10 @@ function shouldSendPaymentLinkNow({ lead, body }) {
   return isOfferStage(lead) || shouldAskForLinkAgain(body);
 }
 
-function lastBotAskedForVideo(lead) {
-  return /(video|clase corta|12 minutos|te la env[ií]e|te env[ií]e el video)/i.test(lead && lead.last_bot_message ? lead.last_bot_message : '');
+function lastBotAskedForVideo(lead, history = []) {
+  const outbound = lastOutboundMessage(history);
+  const text = lead && lead.last_bot_message ? lead.last_bot_message : (outbound && outbound.body);
+  return /(video|clase corta|12 minutos|te la env[ií]e|te env[ií]e el video)/i.test(text || '');
 }
 
 async function buildStageReply({ lead, memory, history, body, settings, stage, objective, fallback }) {
@@ -529,7 +606,7 @@ async function sendPriceOnly({ lead, conversation, settings, memory, history, bo
       funnel_stage: lead.funnel_stage === 'inicio' ? 'oferta_presentada' : lead.funnel_stage
     },
     memoryPatch: {
-      current_step: activeStep(lead, conversation, {}),
+      current_step: activeStep(lead, conversation, {}, history),
       last_price_answered: true
     }
   });
@@ -745,13 +822,29 @@ async function handlePostLinkConversation({ lead, conversation, memory, history,
 }
 
 async function handleStep({ lead, conversation, memory, history, body, settings }) {
-  const step = activeStep(lead, conversation, memory);
+  const step = activeStep(lead, conversation, memory, history);
+  const inferredStep = inferStepFromHistory(history);
 
   if (lead.closed_conversation && !detectProgramDetailsIntent(body) && !detectPurchaseIntent(body) && !detectPriceIntent(body)) {
     return result({ lead, conversation, reply: farewellMessage() });
   }
 
-  if (lead.funnel_stage === 'inicio' && detectAffirmative(body) && lastBotAskedForVideo(lead)) {
+  if (lead.funnel_stage === 'inicio' && inferredStep && inferredStep !== 'video_offered') {
+    await updateLeadAndMemory({
+      lead,
+      conversation,
+      leadFields: {
+        funnel_stage: stepToFunnelStage(inferredStep)
+      },
+      memoryPatch: {
+        current_step: inferredStep,
+        conversation_stage: inferredStep
+      },
+      currentStep: inferredStep
+    });
+  }
+
+  if (lead.funnel_stage === 'inicio' && detectAffirmative(body) && lastBotAskedForVideo(lead, history)) {
     return sendVideo({ lead, conversation, settings, memory, history, body });
   }
 
@@ -869,6 +962,22 @@ async function handleStep({ lead, conversation, memory, history, body, settings 
     }
   }
 
+  if (step && step !== 'inicio') {
+    const stage = stepToFunnelStage(step);
+    const reply = await buildStageReply({
+      lead,
+      memory,
+      history,
+      body,
+      settings,
+      stage,
+      objective: `La conversación ya está en la etapa "${stage}". Responde exactamente a lo que el usuario dijo, sin reiniciar, sin repetir bienvenida y sin saltar a venta. Avanza solo si su mensaje lo permite.`,
+      fallback: contextualFallbackReply({ lead, userMessage: body, stage, settings })
+    });
+
+    return result({ lead, conversation, reply });
+  }
+
   return null;
 }
 
@@ -937,6 +1046,16 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
   const memory = memoryObject(memoryRow);
   const history = await messageService.getConversationHistory(lead.id);
   const settings = await settingsService.getRuntimeSettings();
+  const lastOutbound = lastOutboundMessage(history);
+
+  console.log('Conversation state resolved', {
+    leadId: lead.id,
+    funnel_stage: lead.funnel_stage,
+    conversation_step: conversation.current_step,
+    memory_step: memory.current_step,
+    inferred_step: inferStepFromHistory(history),
+    last_bot_preview: lastOutbound && lastOutbound.body ? String(lastOutbound.body).slice(0, 120) : null
+  });
 
   if (detectBotIdentityQuestion(body)) {
     return result({ lead, conversation, reply: botIdentityMessage() });
