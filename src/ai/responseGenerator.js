@@ -58,6 +58,8 @@ function compactLeadContext(lead = {}) {
     funnel_stage: lead.funnel_stage,
     main_objection: lead.main_objection,
     objection_type: lead.objection_type,
+    video_sent: lead.video_sent,
+    pdf_sent: lead.pdf_sent,
     purchase_intent: lead.purchase_intent,
     hotmart_link_sent: lead.hotmart_link_sent,
     payment_status: lead.payment_status,
@@ -68,7 +70,7 @@ function compactLeadContext(lead = {}) {
 }
 
 function compactHistory(history = []) {
-  return (history || []).slice(-10).map((item) => ({
+  return (history || []).slice(-12).map((item) => ({
     direction: item.direction,
     body: String(item.body || '').slice(0, 700),
     created_at: item.created_at
@@ -116,6 +118,8 @@ ETAPAS VALIDAS:
 ${VALID_STAGES.join(', ')}
 
 ACCIONES DISPONIBLES:
+- send_video_link: true solo si el usuario acepta recibir la clase/video y VIDEO_LINK existe.
+- send_pdf_link: true solo si el usuario pide o acepta PDF/material y PDF_LINK existe.
 - send_hotmart_link: true solo si corresponde enviar o reenviar el link oficial.
 - create_payment: true cuando se envia el link por primera vez.
 - create_payment_followups: true cuando se envia el link por primera vez.
@@ -126,6 +130,9 @@ ACCIONES DISPONIBLES:
 - stop_contact: true si pide STOP / cancelar / no me escribas.
 
 REGLAS DE LINK:
+- Si send_video_link=true, la respuesta debe incluir este link exacto: ${videoLink || 'NO DISPONIBLE'}.
+- Si send_pdf_link=true, la respuesta debe incluir este link exacto: ${pdfLink || 'NO DISPONIBLE'}.
+- Si no existe video o PDF configurado, no actives send_video_link/send_pdf_link y no inventes links.
 - Si send_hotmart_link=true, la respuesta debe incluir este link exacto: ${hotmartLink}
 - Si hotmart_link_sent=true y el usuario NO pide el link, NO lo reenvies.
 - Si hotmart_link_sent=true, responde la duda actual y ayuda a cerrar la venta sin reiniciar.
@@ -143,6 +150,8 @@ Devuelve SOLO JSON valido. Para ahorrar tokens, puedes dejar lead_fields y memor
   "lead_fields": {},
   "memory_patch": {},
   "actions": {
+    "send_video_link": false,
+    "send_pdf_link": false,
     "send_hotmart_link": false,
     "create_payment": false,
     "create_payment_followups": false,
@@ -191,6 +200,8 @@ function normalizeDecision(raw, currentStage) {
     lead_fields: leadFields,
     memory_patch: memoryPatch,
     actions: {
+      send_video_link: Boolean(actions.send_video_link),
+      send_pdf_link: Boolean(actions.send_pdf_link),
       send_hotmart_link: Boolean(actions.send_hotmart_link),
       create_payment: Boolean(actions.create_payment),
       create_payment_followups: Boolean(actions.create_payment_followups),
@@ -294,6 +305,8 @@ function decisionFromText(rawText, currentStage) {
 
 function emptyActions() {
   return {
+    send_video_link: false,
+    send_pdf_link: false,
     send_hotmart_link: false,
     create_payment: false,
     create_payment_followups: false,

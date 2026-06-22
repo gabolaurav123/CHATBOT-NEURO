@@ -196,6 +196,20 @@ async function applyAIDecision({
   leadFields.consent_24h = leadFields.consent_24h === false ? false : true;
   leadFields.memory_expires_at = addHours(new Date(), env.MEMORY_EXPIRATION_HOURS);
 
+  if (actions.send_video_link && settings.video_link) {
+    leadFields.video_sent = true;
+    leadFields.video_sent_at = lead.video_sent_at || new Date();
+    leadFields.funnel_stage = 'diagnostico';
+    decision.next_stage = 'diagnostico';
+  }
+
+  if (actions.send_pdf_link && settings.pdf_link) {
+    leadFields.pdf_sent = true;
+    leadFields.pdf_sent_at = lead.pdf_sent_at || new Date();
+    leadFields.funnel_stage = 'datos_solicitados';
+    decision.next_stage = 'datos_solicitados';
+  }
+
   if (actions.send_hotmart_link) {
     leadFields.purchase_intent = true;
     leadFields.hotmart_link_sent = true;
@@ -444,7 +458,7 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
 
   const memoryRow = await memoryService.getMemoryByLeadId(lead.id);
   const memory = memoryObject(memoryRow);
-  const history = await messageService.getConversationHistory(lead.id, 10);
+  const history = await messageService.getConversationHistory(lead.id, 12);
   const settings = await settingsService.getRuntimeSettings();
   const currentStage = resolveCurrentStage({ lead, conversation, memory });
 
