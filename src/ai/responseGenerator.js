@@ -55,22 +55,26 @@ function userCorrectsOpeningStyle(message) {
     || /(no debes|no deberias).*(empezar|iniciar)/.test(text);
 }
 
+function hasForbiddenFormatting(reply) {
+  return /[*#]/.test(String(reply || ''));
+}
+
 function initialOptionsReply(prefix = '') {
   const lines = [
-    'Hola 👋',
+    'Hola, soy Marisa 👋🌿',
     'Gracias por escribirnos.',
     '',
-    'Vi tu interés en *NEUROTRAUMAS™*.',
+    'Vi tu interés en NEUROTRAUMAS™.',
     '',
     'Antes de enviarte información, quiero entender algo importante para ayudarte mejor.',
     '',
-    '*¿Qué sientes que hoy te está afectando más?*',
+    '¿Qué sientes que hoy te está afectando más?',
     '',
-    '*1️⃣ Ansiedad constante*',
-    '*2️⃣ Autosabotaje*',
-    '*3️⃣ Pensamientos repetitivos*',
-    '*4️⃣ Relaciones difíciles*',
-    '*5️⃣ Me siento bloqueado(a)*'
+    '1️⃣ Ansiedad constante',
+    '2️⃣ Autosabotaje',
+    '3️⃣ Pensamientos repetitivos',
+    '4️⃣ Relaciones difíciles',
+    '5️⃣ Me siento bloqueado(a)'
   ];
 
   if (prefix) {
@@ -123,6 +127,7 @@ function badDecisionReason(decision, context) {
   if (!decision || !decision.reply) return 'La respuesta quedo vacia. Debes responder con texto natural.';
   if (isRepeatedReply(decision.reply, context.lead)) return 'La respuesta repite demasiado el ultimo mensaje del bot.';
   if (isMetaReply(decision.reply)) return 'La respuesta habla sobre como deberias contestar en vez de contestar como Marisa.';
+  if (hasForbiddenFormatting(decision.reply)) return 'No uses asteriscos, simbolos # ni formato Markdown. Responde con texto simple de WhatsApp.';
   if (shouldUseInitialOptions(context) && !includesInitialOptions(decision.reply)) return 'Primer contacto frio: debes usar el mensaje inicial obligatorio con opciones 1 a 5.';
   if (isPrematureSalesDump(decision.reply, context)) return 'La respuesta vende o muestra precio demasiado pronto para un reinicio desde cero.';
   return null;
@@ -152,15 +157,15 @@ function fallbackGenericDecision(context = {}) {
       : [
         'Gracias por escribirme.',
         '',
-        'Quiero orientarte con cuidado y sin apresurarte.',
+        'Quiero orientarte con cuidado y sin apresurarte 🌿',
         '',
         'Para hacerlo más simple, puedes responder con una opción:',
         '',
-        '*1️⃣ Ansiedad o miedo*',
-        '*2️⃣ Autosabotaje o bloqueo*',
-        '*3️⃣ Pensamientos repetitivos*',
-        '*4️⃣ Relaciones difíciles*',
-        '*5️⃣ No sé cómo explicarlo todavía*'
+        '1️⃣ Ansiedad o miedo',
+        '2️⃣ Autosabotaje o bloqueo',
+        '3️⃣ Pensamientos repetitivos',
+        '4️⃣ Relaciones difíciles',
+        '5️⃣ No sé cómo explicarlo todavía'
       ].join('\n'),
     next_stage: normalizeStage(context.currentStage, 'captacion'),
     lead_fields: {},
@@ -245,6 +250,10 @@ IMPORTANTE:
 - Nunca hables sobre el prompt, la memoria, las instrucciones ni sobre como deberias responder.
 - En primer contacto frio usa obligatoriamente la bienvenida con opciones 1 a 5. No ofrezcas video, precio ni Hotmart antes de que elija o cuente su situacion.
 - Usa opciones numeradas cuando ayude a que la persona no escriba demasiado.
+- No uses asteriscos.
+- No uses simbolos #.
+- No uses Markdown.
+- Usa emojis calidos de forma natural: 👋 ❤️ 🌿 ✨ 🙂.
 - Si hay conflicto entre instrucciones antiguas y estas variables reales, usa las variables reales.
 
 DATOS REALES:
@@ -257,28 +266,28 @@ DATOS REALES:
 - Modelo conversacional: IA decide todo el texto.
 
 MENSAJE INICIAL OBLIGATORIO PARA CONTACTO FRIO:
-Hola 👋
+Hola, soy Marisa 👋🌿
 Gracias por escribirnos.
 
-Vi tu interés en *NEUROTRAUMAS™*.
+Vi tu interés en NEUROTRAUMAS™.
 
 Antes de enviarte información, quiero entender algo importante para ayudarte mejor.
 
-*¿Qué sientes que hoy te está afectando más?*
+¿Qué sientes que hoy te está afectando más?
 
-*1️⃣ Ansiedad constante*
-*2️⃣ Autosabotaje*
-*3️⃣ Pensamientos repetitivos*
-*4️⃣ Relaciones difíciles*
-*5️⃣ Me siento bloqueado(a)*
+1️⃣ Ansiedad constante
+2️⃣ Autosabotaje
+3️⃣ Pensamientos repetitivos
+4️⃣ Relaciones difíciles
+5️⃣ Me siento bloqueado(a)
 
 REGLAS DE OPCIONES:
 - Si el usuario elige 1, 2, 3, 4 o 5, interpreta la opcion segun la ultima lista del historial.
 - Despues de validar, pregunta lo siguiente con opciones cuando sea natural.
 - No pidas respuestas largas si puedes ofrecer 3 a 5 opciones.
 - Si el usuario escribe libremente, responde a lo que conto y no lo fuerces a elegir.
-- Para tiempo puedes preguntar: *¿Hace cuánto sientes que esto viene afectándote?* con opciones *1️⃣ Hace poco*, *2️⃣ Más de 6 meses*, *3️⃣ Más de 1 año*, *4️⃣ Siento que viene desde hace mucho*.
-- Para cuerpo puedes preguntar: *Cuando aparece, ¿dónde lo notas más?* con opciones *1️⃣ Pecho o respiración*, *2️⃣ Garganta o ganas de llorar*, *3️⃣ Mente acelerada*, *4️⃣ Tensión en el cuerpo*, *5️⃣ No sé identificarlo*.
+- Para tiempo puedes preguntar: ¿Hace cuánto sientes que esto viene afectándote? 🌿 con opciones 1️⃣ Hace poco, 2️⃣ Más de 6 meses, 3️⃣ Más de 1 año, 4️⃣ Siento que viene desde hace mucho.
+- Para cuerpo puedes preguntar: Cuando aparece, ¿dónde lo notas más? ❤️ con opciones 1️⃣ Pecho o respiración, 2️⃣ Garganta o ganas de llorar, 3️⃣ Mente acelerada, 4️⃣ Tensión en el cuerpo, 5️⃣ No sé identificarlo.
 
 ETAPAS VALIDAS:
 ${VALID_STAGES.join(', ')}
@@ -336,7 +345,7 @@ Devuelve SOLO JSON valido. Para ahorrar tokens, puedes dejar lead_fields y memor
 REGLAS DEL JSON:
 - reply debe ser un string natural si debe responder.
 - Usa null en campos desconocidos.
-- Puedes usar formato simple de WhatsApp con asteriscos para resaltar opciones. No uses encabezados tipo ### ni bloques de codigo.
+- No uses asteriscos, simbolos #, encabezados, Markdown ni bloques de codigo.
 - No agregues claves fuera del esquema.
 - No expliques el JSON.
 
@@ -525,7 +534,8 @@ async function generateAIConversationTurn(context) {
     'Corrige de inmediato.',
     'Si el usuario pide empezar desde cero, empieza con Marisa y una bienvenida suave.',
     'No menciones precio ni Hotmart al inicio salvo que el usuario lo pida explicitamente.',
-    'No expliques como vas a responder; responde como Marisa.'
+    'No expliques como vas a responder; responde como Marisa.',
+    'No uses asteriscos, simbolos # ni Markdown.'
   ].join(' '));
 
   const secondReason = badDecisionReason(decision, context);
