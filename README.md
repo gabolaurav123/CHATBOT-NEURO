@@ -130,6 +130,8 @@ x-admin-api-key: TU_ADMIN_API_KEY
 
 `GET /api/health` es publico y muestra estado basico sin exponer secretos. Si se envia `x-admin-api-key`, incluye el estado administrativo completo de WhatsApp.
 
+Para confirmar que Seenode esta usando la memoria nueva, revisa `config.promptVersion` en `/api/health`. Debe mostrar una version tipo `NEURO_PROMPT_VERSION=marisa-memory-2026-06-22-v4`. Esa misma marca tambien viaja en las instrucciones enviadas a OpenAI.
+
 Endpoints principales:
 
 - `GET /api/leads`

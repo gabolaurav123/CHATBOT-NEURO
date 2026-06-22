@@ -1,6 +1,7 @@
 const express = require('express');
 const { env } = require('../config/env');
 const whatsappService = require('../services/whatsappService');
+const { PROMPT_VERSION } = require('../ai/systemPrompt');
 
 const router = express.Router();
 
@@ -28,6 +29,7 @@ router.get('/', async (req, res, next) => {
         openaiConfigured: Boolean(env.OPENAI_API_KEY),
         openaiModel: env.OPENAI_MODEL,
         openaiMaxOutputTokens: env.OPENAI_MAX_OUTPUT_TOKENS,
+        promptVersion: PROMPT_VERSION,
         whatsappSessionPath: env.WHATSAPP_SESSION_PATH,
         nodeEnv: env.NODE_ENV,
         port: env.PORT

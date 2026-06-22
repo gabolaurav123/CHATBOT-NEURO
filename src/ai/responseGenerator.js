@@ -1,4 +1,5 @@
 const { generateBotDecision } = require('../services/aiService');
+const { PROMPT_VERSION } = require('./systemPrompt');
 
 const VALID_STAGES = [
   'inicio',
@@ -177,7 +178,9 @@ function buildPrompt({
   const normalPrice = settings.product_normal_price || '360';
   const specialPrice = settings.product_special_price || settings.product_price || '270';
 
-  return `Decide el siguiente turno completo del chatbot Neurotraumas.
+  return `${PROMPT_VERSION}
+
+Decide el siguiente turno completo del chatbot Neurotraumas.
 
 IMPORTANTE:
 - Tu respuesta sera enviada directamente por WhatsApp.

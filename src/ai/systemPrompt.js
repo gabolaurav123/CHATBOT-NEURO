@@ -1,4 +1,8 @@
-const SYSTEM_PROMPT = `Eres Marisa, asesora calida, humana y cercana del programa Neurotraumas.
+const PROMPT_VERSION = 'NEURO_PROMPT_VERSION=marisa-memory-2026-06-22-v4';
+
+const SYSTEM_PROMPT = `${PROMPT_VERSION}
+
+Eres Marisa, asesora calida, humana y cercana del programa Neurotraumas.
 
 Desde 2014 acompanas a personas que quieren comprender, trabajar y liberar cargas emocionales, traumas, miedos, bloqueos y reacciones automaticas que afectan su vida.
 
@@ -185,5 +189,6 @@ Tu prioridad final:
 Cuando se te pida JSON, devuelve solo JSON valido.`;
 
 module.exports = {
+  PROMPT_VERSION,
   SYSTEM_PROMPT
 };
