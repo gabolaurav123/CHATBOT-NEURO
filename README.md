@@ -18,7 +18,7 @@ Variables criticas:
 - `OPENAI_API_KEY`: API key de OpenAI. Es la unica fuente de credenciales de IA.
 - `ADMIN_API_KEY`: clave que debe enviar el CRM en `x-admin-api-key`.
 - `OPENAI_MODEL`: modelo de OpenAI, recomendado `gpt-5.4-mini`.
-- `OPENAI_MAX_OUTPUT_TOKENS`: limite de salida del modelo, recomendado `250`.
+- `OPENAI_MAX_OUTPUT_TOKENS`: limite de salida del modelo, recomendado `700` para que el JSON conversacional no se corte.
 - `HOTMART_LINK`: link de pago, tambien editable desde `bot_settings`.
 - `VIDEO_LINK`: link opcional de la clase/video inicial. Si existe, la IA puede enviarlo como apoyo, pero nunca obliga al usuario a verlo ni detiene la conversacion si quiere seguir por chat.
 - `PDF_LINK`: link opcional de material PDF. La IA solo lo menciona si existe en configuracion.
@@ -84,7 +84,7 @@ DATABASE_URL=
 ADMIN_API_KEY=
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.4-mini
-OPENAI_MAX_OUTPUT_TOKENS=250
+OPENAI_MAX_OUTPUT_TOKENS=700
 HOTMART_LINK=https://pay.hotmart.com/T103515864E
 VIDEO_LINK=
 PDF_LINK=
@@ -234,7 +234,7 @@ La integracion esta en:
 
 OpenAI decide el turno completo: respuesta, siguiente etapa, campos del lead, memoria y acciones. El backend no mezcla plantillas comerciales ni decide textos por etapa.
 
-Usa `gpt-5.4-mini` por defecto via Responses API. El backend limita la salida a `OPENAI_MAX_OUTPUT_TOKENS`, por defecto `250`, y envia solo el contexto reciente necesario para controlar costos. Si OpenAI falla, el backend responde con un fallback tecnico y registra el error sin exponer la API key.
+Usa `gpt-5.4-mini` por defecto via Responses API. El backend limita la salida a `OPENAI_MAX_OUTPUT_TOKENS`, por defecto `700`, y envia solo el contexto reciente necesario para controlar costos. Si OpenAI falla, el backend responde con un fallback conversacional basico y registra el error sin exponer la API key.
 
 ## Seguridad Conversacional
 

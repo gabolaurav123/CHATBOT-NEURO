@@ -21,7 +21,7 @@ const env = {
   ADMIN_API_KEY: process.env.ADMIN_API_KEY,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
-  OPENAI_MAX_OUTPUT_TOKENS: numberFromEnv('OPENAI_MAX_OUTPUT_TOKENS', 250),
+  OPENAI_MAX_OUTPUT_TOKENS: numberFromEnv('OPENAI_MAX_OUTPUT_TOKENS', 700),
   BOT_NAME: process.env.BOT_NAME || 'Marisa',
   PRODUCT_NAME: process.env.PRODUCT_NAME || 'Neurotraumas',
   PRODUCT_NORMAL_PRICE: numberFromEnv('PRODUCT_NORMAL_PRICE', 360),

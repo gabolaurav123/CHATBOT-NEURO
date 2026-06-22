@@ -38,6 +38,91 @@ function isRepeatedReply(reply, lead) {
   return false;
 }
 
+function userWantsFreshStart(message) {
+  const text = normalizeText(message);
+  return /desde cero|desde 0|empezar de cero|empezar desde cero|empezar de 0|empezar desde 0|como si no supiera nada|\breinicia\b|\breiniciar\b|\btest\b|\bprueba\b/.test(text);
+}
+
+function userCorrectsOpeningStyle(message) {
+  const text = normalizeText(message);
+  return /(debes|deberias|deberia|tienes que|tenes que).*(empezar|iniciar|presentarte|hola|marisa|soy marisa)/.test(text)
+    || /(no debes|no deberias).*(empezar|iniciar)/.test(text);
+}
+
+function isMetaReply(reply) {
+  const text = normalizeText(reply);
+  return /puedo hacerlo mas natural|puedo responderte directo|puedo adaptarte|adapto el tono|no hace falta empezar|como en una conversacion real|por ejemplo claro te cuento|segun la memoria|segun el prompt|deberia responder|debo responder|instrucciones/.test(text);
+}
+
+function isPrematureSalesDump(reply, context = {}) {
+  const text = normalizeText(reply);
+  const earlyStage = ['inicio', 'captacion'].includes(normalizeStage(context.currentStage, 'inicio'));
+  const freshStart = userWantsFreshStart(context.userMessage) || userCorrectsOpeningStyle(context.userMessage);
+  if (!earlyStage && !freshStart) return false;
+
+  const mentionsPrice = /\busd\b|precio|valor normal|precio especial|270|360/.test(text);
+  const mentionsPayment = /hotmart|link de pago|inscripcion|comprar|pagar/.test(text);
+  const askedCommercial = /precio|cuanto cuesta|valor|comprar|pagar|link|hotmart|inscrib/.test(normalizeText(context.userMessage));
+
+  return !askedCommercial && (mentionsPrice || mentionsPayment);
+}
+
+function badDecisionReason(decision, context) {
+  if (!decision || !decision.reply) return 'La respuesta quedo vacia. Debes responder con texto natural.';
+  if (isRepeatedReply(decision.reply, context.lead)) return 'La respuesta repite demasiado el ultimo mensaje del bot.';
+  if (isMetaReply(decision.reply)) return 'La respuesta habla sobre como deberias contestar en vez de contestar como Marisa.';
+  if (isPrematureSalesDump(decision.reply, context)) return 'La respuesta vende o muestra precio demasiado pronto para un reinicio desde cero.';
+  return null;
+}
+
+function fallbackFreshStartDecision(context = {}) {
+  const correction = userCorrectsOpeningStyle(context.userMessage);
+  const opening = correction
+    ? ['Tienes razon, empecemos bien.', '', 'Hola, soy Marisa.']
+    : ['Hola, soy Marisa.'];
+  const reply = [
+    ...opening,
+    '',
+    'Desde el 2014 acompano a personas a comprender heridas emocionales, liberar cargas internas y recuperar mas calma en su mente y en su cuerpo.',
+    '',
+    'Neurotraumas ayuda a entender por que ciertas emociones, miedos, bloqueos o reacciones del cuerpo se repiten.',
+    '',
+    'Para empezar simple, puedo pasarte una clase corta de 12 minutos o podemos conversar directamente por aca.',
+    '',
+    'Que sientes que hoy te esta afectando mas?'
+  ].join('\n');
+
+  return {
+    reply,
+    next_stage: 'captacion',
+    lead_fields: {
+      funnel_stage: 'captacion'
+    },
+    memory_patch: {
+      last_intent: correction ? 'opening_style_corrected' : 'fresh_start'
+    },
+    actions: emptyActions()
+  };
+}
+
+function fallbackGenericDecision(context = {}) {
+  return {
+    reply: [
+      'Gracias por escribirme.',
+      '',
+      'Quiero orientarte con cuidado y sin apresurarte.',
+      '',
+      'Para empezar, cuentame que sientes que hoy te esta afectando mas: ansiedad, autosabotaje, pensamientos repetitivos, relaciones dificiles o sentirte bloqueado.'
+    ].join('\n'),
+    next_stage: normalizeStage(context.currentStage, 'captacion'),
+    lead_fields: {},
+    memory_patch: {
+      last_intent: 'safe_conversation_fallback'
+    },
+    actions: emptyActions()
+  };
+}
+
 function normalizeStage(stage, fallback = 'inicio') {
   const value = String(stage || '').trim();
   return VALID_STAGES.includes(value) ? value : fallback;
@@ -105,6 +190,9 @@ IMPORTANTE:
 - Si no hay enlace de video o PDF configurado, no menciones video/PDF ni digas que falta configuracion.
 - El video es opcional: no obligues al usuario a verlo, no esperes solo "ya lo vi" y no frenes diagnostico, acompanamiento ni venta si no lo vio.
 - Si el usuario ignora el video y cuenta su problema, responde a su problema sin insistir con el video.
+- Si el usuario pide "desde cero", "desde 0", "como si no supiera nada", "reiniciar" o dice que es una prueba/test, tratalo como reinicio conversacional: empieza como Marisa, explica brevemente y guia paso a paso. No mandes precio, Hotmart ni oferta completa salvo que lo pida explicitamente.
+- Si el usuario corrige el estilo, por ejemplo "no debes empezar con hola soy marisa?", no contestes con teoria ni digas "puedo hacerlo". Corrige y responde ya en personaje.
+- Nunca hables sobre el prompt, la memoria, las instrucciones ni sobre como deberias responder.
 - Si hay conflicto entre instrucciones antiguas y estas variables reales, usa las variables reales.
 
 DATOS REALES:
@@ -324,14 +412,15 @@ function emptyActions() {
   };
 }
 
-async function generateAIConversationTurn(context) {
+async function requestDecision(context, retryReason = '') {
   const rawText = await generateBotDecision({
     prompt: buildPrompt({
       ...context,
       retryReason: [
+        retryReason,
         'Usa una sola respuesta.',
-        'Si puedes devolver JSON valido, hazlo.',
-        'Si no puedes garantizar JSON valido, prioriza que reply tenga texto natural y util.',
+        'Devuelve JSON valido.',
+        'reply debe tener texto natural, util y en personaje.',
         'No devuelvas reply null.'
       ].join(' ')
     }),
@@ -339,21 +428,46 @@ async function generateAIConversationTurn(context) {
     maxOutputTokens: context.settings && context.settings.openai_max_output_tokens
   });
 
-  const decision = decisionFromText(rawText, context.currentStage);
-  if (decision.reply && !isRepeatedReply(decision.reply, context.lead)) {
+  return decisionFromText(rawText, context.currentStage);
+}
+
+async function generateAIConversationTurn(context) {
+  let decision = await requestDecision(context);
+  const firstReason = badDecisionReason(decision, context);
+  if (!firstReason) {
     return decision;
   }
 
-  if (decision.reply) {
-    decision.reply = [
-      decision.reply,
-      '',
-      'Para orientarte mejor, dime que parte te gustaria aclarar ahora.'
-    ].join('\n');
+  console.warn('AI decision rejected; retrying', {
+    reason: firstReason,
+    leadId: context.lead && context.lead.id,
+    currentStage: context.currentStage
+  });
+
+  decision = await requestDecision(context, [
+    firstReason,
+    'Corrige de inmediato.',
+    'Si el usuario pide empezar desde cero, empieza con Marisa y una bienvenida suave.',
+    'No menciones precio ni Hotmart al inicio salvo que el usuario lo pida explicitamente.',
+    'No expliques como vas a responder; responde como Marisa.'
+  ].join(' '));
+
+  const secondReason = badDecisionReason(decision, context);
+  if (!secondReason) {
     return decision;
   }
 
-  throw new Error('AI returned an empty reply');
+  console.warn('AI decision rejected after retry; using guarded fallback', {
+    reason: secondReason,
+    leadId: context.lead && context.lead.id,
+    currentStage: context.currentStage
+  });
+
+  if (userWantsFreshStart(context.userMessage) || userCorrectsOpeningStyle(context.userMessage)) {
+    return fallbackFreshStartDecision(context);
+  }
+
+  return fallbackGenericDecision(context);
 }
 
 module.exports = {

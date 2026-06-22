@@ -341,18 +341,18 @@ function aiUnavailableReply(error) {
     return [
       'Hola, gracias por escribirme.',
       '',
-      'Tu mensaje quedo registrado, pero ahora mismo la IA no esta configurada correctamente para responderte con el contexto de Neurotraumas.',
+      'Tu mensaje quedo registrado correctamente.',
       '',
-      'El equipo lo revisara por aqui para no darte una respuesta automatica incorrecta.'
+      'Para orientarte mejor, cuentame que sientes que hoy te esta afectando mas: ansiedad, autosabotaje, pensamientos repetitivos, relaciones dificiles o sentirte bloqueado.'
     ].join('\n');
   }
 
   return [
     'Hola, gracias por escribirme.',
     '',
-    'Tu mensaje quedo registrado, pero ahora mismo la IA tuvo un problema tecnico al generar la respuesta.',
+    'Quiero orientarte con cuidado y sin apresurarte.',
     '',
-    'El equipo lo revisara por aqui para no darte una respuesta incorrecta.'
+    'Para empezar, cuentame que sientes que hoy te esta afectando mas: ansiedad, autosabotaje, pensamientos repetitivos, relaciones dificiles o sentirte bloqueado.'
   ].join('\n');
 }
 

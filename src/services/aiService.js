@@ -24,9 +24,9 @@ function getModel(modelName) {
 }
 
 function getMaxOutputTokens(value) {
-  const tokens = Number(value || env.OPENAI_MAX_OUTPUT_TOKENS || 250);
-  if (!Number.isFinite(tokens) || tokens <= 0) return 250;
-  return Math.min(Math.max(Math.round(tokens), 220), 250);
+  const tokens = Number(value || env.OPENAI_MAX_OUTPUT_TOKENS || 700);
+  if (!Number.isFinite(tokens) || tokens <= 0) return 700;
+  return Math.min(Math.max(Math.round(tokens), 500), 1200);
 }
 
 function extractOutputText(response) {
