@@ -54,7 +54,8 @@ async function getRuntimeSettings() {
     video_link: settings.video_link || env.VIDEO_LINK,
     pdf_link: settings.pdf_link || env.PDF_LINK,
     hotmart_link: settings.hotmart_link || env.HOTMART_LINK,
-    gemini_model: settings.gemini_model || env.GEMINI_MODEL
+    openai_model: settings.openai_model || env.OPENAI_MODEL,
+    openai_max_output_tokens: settings.openai_max_output_tokens || String(env.OPENAI_MAX_OUTPUT_TOKENS)
   };
 }
 

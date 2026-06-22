@@ -1,6 +1,6 @@
 # Chatbot Neurotraumas
 
-Backend independiente para un chatbot vendedor de Neurotraumas conectado a WhatsApp por QR, PostgreSQL y Gemini API. El CRM puede leer leads, conversaciones, mensajes, pagos, follow-ups, settings y controlar el bot desde endpoints protegidos.
+Backend independiente para un chatbot vendedor de Neurotraumas conectado a WhatsApp por QR, PostgreSQL y OpenAI API. El CRM puede leer leads, conversaciones, mensajes, pagos, follow-ups, settings y controlar el bot desde endpoints protegidos.
 
 ## WhatsApp Sin Chrome
 
@@ -15,9 +15,10 @@ Copia `.env.example` a `.env` solo en tu entorno local o configura las variables
 Variables criticas:
 
 - `DATABASE_URL`: conexion PostgreSQL. Es la unica fuente de conexion a base de datos.
-- `GEMINI_API_KEY`: API key de Gemini. Es la unica fuente de credenciales de IA.
+- `OPENAI_API_KEY`: API key de OpenAI. Es la unica fuente de credenciales de IA.
 - `ADMIN_API_KEY`: clave que debe enviar el CRM en `x-admin-api-key`.
-- `GEMINI_MODEL`: modelo de Gemini, recomendado `gemini-2.5-flash`.
+- `OPENAI_MODEL`: modelo de OpenAI, recomendado `gpt-5.4-mini`.
+- `OPENAI_MAX_OUTPUT_TOKENS`: limite de salida del modelo, recomendado `250`.
 - `HOTMART_LINK`: link de pago, tambien editable desde `bot_settings`.
 - `VIDEO_LINK` / `PDF_LINK`: opcionales. La IA solo los menciona si existen en configuracion.
 - `PRODUCT_NORMAL_PRICE`: precio normal mostrado al usuario, por defecto `360`.
@@ -80,10 +81,9 @@ Variables:
 ```env
 DATABASE_URL=
 ADMIN_API_KEY=
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-2.5-flash
-GEMINI_TEMPERATURE=0.7
-GEMINI_MAX_OUTPUT_TOKENS=800
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.4-mini
+OPENAI_MAX_OUTPUT_TOKENS=250
 HOTMART_LINK=https://pay.hotmart.com/T103515864E
 VIDEO_LINK=
 PDF_LINK=
@@ -127,7 +127,7 @@ Todos los endpoints administrativos requieren:
 x-admin-api-key: TU_ADMIN_API_KEY
 ```
 
-`GET /api/health` tambien requiere `x-admin-api-key`.
+`GET /api/health` es publico y muestra estado basico sin exponer secretos. Si se envia `x-admin-api-key`, incluye el estado administrativo completo de WhatsApp.
 
 Endpoints principales:
 
@@ -196,7 +196,7 @@ Al iniciar, el servidor ejecuta `src/database/migrations/schema.sql` con `CREATE
 
 `whatsapp_id` es el JID real de Baileys y es el identificador usado para enviar mensajes. `phone` solo se guarda cuando se obtiene un numero real con seguridad, por ejemplo `+59171234567`. Si Baileys entrega un `@lid`, el backend guarda `phone = null`, `whatsapp_lid = ...@lid` y `display_phone = ID WhatsApp: ...`.
 
-El flujo automatico conversa como Marisa usando Gemini como unico motor conversacional. La IA decide la respuesta, la etapa y acciones como enviar Hotmart, reportar pago, pausar o activar takeover humano. El backend solo guarda estado, mensajes, memoria y ejecuta acciones tecnicas.
+El flujo automatico conversa como Marisa usando OpenAI como unico motor conversacional. La IA decide la respuesta, la etapa y acciones como enviar Hotmart, reportar pago, pausar o activar takeover humano. El backend solo guarda estado, mensajes, memoria y ejecuta acciones tecnicas.
 
 El acceso oficial de Hotmart es:
 
@@ -221,18 +221,17 @@ El job `scheduledFollowUps` corre cada 5 minutos y envia follow-ups pendientes s
 
 Se crean follow-ups despues de enviar el link de Hotmart.
 
-## Gemini API
+## OpenAI API
 
 La integracion esta en:
 
-- `src/ai/geminiClient.js`
-- `src/ai/intentClassifier.js`
+- `src/services/aiService.js`
 - `src/ai/responseGenerator.js`
 - `src/ai/systemPrompt.js`
 
-Gemini decide el turno completo: respuesta, siguiente etapa, campos del lead, memoria y acciones. El backend no mezcla plantillas comerciales ni decide textos por etapa.
+OpenAI decide el turno completo: respuesta, siguiente etapa, campos del lead, memoria y acciones. El backend no mezcla plantillas comerciales ni decide textos por etapa.
 
-Usa `gemini-2.5-flash`. Si en Seenode queda configurado un modelo viejo como `gemini-1.5-flash` o `gemini-2.0-flash`, el backend lo reemplaza en runtime por `gemini-2.5-flash`. Si Gemini falla, el backend no inventa una respuesta pregrabada: activa takeover humano para evitar respuestas incoherentes.
+Usa `gpt-5.4-mini` por defecto via Responses API. El backend limita la salida a `OPENAI_MAX_OUTPUT_TOKENS`, por defecto `250`, y envia solo el contexto reciente necesario para controlar costos. Si OpenAI falla, el backend responde con un fallback tecnico y registra el error sin exponer la API key.
 
 ## Seguridad Conversacional
 

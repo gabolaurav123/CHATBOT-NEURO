@@ -31,8 +31,9 @@ Configura estas variables en el panel de Seenode:
 ```env
 DATABASE_URL=
 ADMIN_API_KEY=
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-2.5-flash
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.4-mini
+OPENAI_MAX_OUTPUT_TOKENS=250
 HOTMART_LINK=https://pay.hotmart.com/T103515864E
 VIDEO_LINK=
 PDF_LINK=
@@ -42,13 +43,11 @@ PRODUCT_PRICE=270
 WHATSAPP_SESSION_PATH=.baileys_auth
 PORT=80
 NODE_ENV=production
-GEMINI_TEMPERATURE=0.7
-GEMINI_MAX_OUTPUT_TOKENS=800
 MEMORY_EXPIRATION_HOURS=24
 TIMEZONE=America/La_Paz
 ```
 
-No pongas `DATABASE_URL` ni `GEMINI_API_KEY` dentro del codigo. Usa `gemini-2.5-flash`; si Seenode conserva un valor viejo como `gemini-1.5-flash`, el backend lo reemplaza en runtime por `gemini-2.5-flash`.
+No pongas `DATABASE_URL` ni `OPENAI_API_KEY` dentro del codigo. Usa `gpt-5.4-mini` como modelo principal.
 
 ## WhatsApp
 
@@ -67,7 +66,6 @@ Si la carpeta `.baileys_auth` persiste, WhatsApp no deberia pedir QR en cada rei
 
 ```http
 GET /api/health
-x-admin-api-key: TU_ADMIN_API_KEY
 ```
 
-Este endpoint sigue la misma proteccion administrativa que el resto de la API.
+Este endpoint muestra estado basico sin exponer secretos. Si agregas `x-admin-api-key`, tambien devuelve el estado administrativo completo de WhatsApp.

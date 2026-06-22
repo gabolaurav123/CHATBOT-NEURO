@@ -321,7 +321,7 @@ function shouldResetStaleSalesState(lead, body) {
 }
 
 function aiUnavailableReply(error) {
-  const missingKey = /GEMINI_API_KEY/i.test(String(error && error.message ? error.message : error));
+  const missingKey = /OPENAI_API_KEY/i.test(String(error && error.message ? error.message : error));
 
   if (missingKey) {
     return [
@@ -444,7 +444,7 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
 
   const memoryRow = await memoryService.getMemoryByLeadId(lead.id);
   const memory = memoryObject(memoryRow);
-  const history = await messageService.getConversationHistory(lead.id, 20);
+  const history = await messageService.getConversationHistory(lead.id, 10);
   const settings = await settingsService.getRuntimeSettings();
   const currentStage = resolveCurrentStage({ lead, conversation, memory });
 

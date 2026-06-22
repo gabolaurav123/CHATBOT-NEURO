@@ -1,5 +1,4 @@
-const { generateText } = require('./geminiClient');
-const { SYSTEM_PROMPT } = require('./systemPrompt');
+const { generateBotDecision } = require('../services/aiService');
 
 const VALID_STAGES = [
   'inicio',
@@ -42,6 +41,38 @@ function isRepeatedReply(reply, lead) {
 function normalizeStage(stage, fallback = 'inicio') {
   const value = String(stage || '').trim();
   return VALID_STAGES.includes(value) ? value : fallback;
+}
+
+function compactLeadContext(lead = {}) {
+  return {
+    name: lead.name,
+    email: lead.email,
+    username: lead.username,
+    display_phone: lead.display_phone,
+    main_pain: lead.main_pain,
+    emotional_response: lead.emotional_response,
+    problem_duration: lead.problem_duration,
+    tried_before: lead.tried_before,
+    urgency: lead.urgency,
+    lead_status: lead.lead_status,
+    funnel_stage: lead.funnel_stage,
+    main_objection: lead.main_objection,
+    objection_type: lead.objection_type,
+    purchase_intent: lead.purchase_intent,
+    hotmart_link_sent: lead.hotmart_link_sent,
+    payment_status: lead.payment_status,
+    crisis_detected: lead.crisis_detected,
+    last_user_message: lead.last_user_message,
+    last_bot_message: lead.last_bot_message
+  };
+}
+
+function compactHistory(history = []) {
+  return (history || []).slice(-10).map((item) => ({
+    direction: item.direction,
+    body: String(item.body || '').slice(0, 700),
+    created_at: item.created_at
+  }));
 }
 
 function buildPrompt({
@@ -105,34 +136,12 @@ REGLAS DE CRM:
 - No inventes telefono. El backend solo guardara phone si el usuario lo escribio claramente.
 
 FORMATO OBLIGATORIO:
-Devuelve SOLO JSON valido con este esquema:
+Devuelve SOLO JSON valido. Para ahorrar tokens, puedes dejar lead_fields y memory_patch como objetos vacios si no hay datos nuevos.
 {
   "reply": "texto final para WhatsApp o null si no debe responder",
   "next_stage": "uno de los valores validos",
-  "lead_fields": {
-    "name": null,
-    "email": null,
-    "username": null,
-    "main_pain": null,
-    "emotional_response": null,
-    "problem_duration": null,
-    "tried_before": null,
-    "urgency": null,
-    "lead_status": null,
-    "main_objection": null,
-    "objection_type": null,
-    "purchase_intent": null,
-    "closed_conversation": null,
-    "crisis_detected": null,
-    "payment_status": null,
-    "consent_24h": null
-  },
-  "memory_patch": {
-    "summary": null,
-    "conversation_stage": null,
-    "last_intent": null,
-    "known_context": null
-  },
+  "lead_fields": {},
+  "memory_patch": {},
   "actions": {
     "send_hotmart_link": false,
     "create_payment": false,
@@ -155,7 +164,7 @@ REGLAS DEL JSON:
 ${retryReason ? `CORRECCION OBLIGATORIA POR REINTENTO: ${retryReason}` : ''}
 
 ESTADO ACTUAL DEL LEAD:
-${JSON.stringify(lead || {}, null, 2)}
+${JSON.stringify(compactLeadContext(lead), null, 2)}
 
 MEMORIA 24H:
 ${JSON.stringify(memory || {}, null, 2)}
@@ -164,7 +173,7 @@ ETAPA ACTUAL:
 ${currentStage || 'inicio'}
 
 HISTORIAL RECIENTE:
-${JSON.stringify(history || [], null, 2)}
+${JSON.stringify(compactHistory(history), null, 2)}
 
 MENSAJE ACTUAL DEL USUARIO:
 ${userMessage}`;
@@ -297,7 +306,7 @@ function emptyActions() {
 }
 
 async function generateAIConversationTurn(context) {
-  const rawText = await generateText({
+  const rawText = await generateBotDecision({
     prompt: buildPrompt({
       ...context,
       retryReason: [
@@ -307,10 +316,8 @@ async function generateAIConversationTurn(context) {
         'No devuelvas reply null.'
       ].join(' ')
     }),
-    systemInstruction: SYSTEM_PROMPT,
-    model: context.settings && context.settings.gemini_model,
-    temperature: 0.7,
-    maxOutputTokens: 900
+    model: context.settings && context.settings.openai_model,
+    maxOutputTokens: context.settings && context.settings.openai_max_output_tokens
   });
 
   const decision = decisionFromText(rawText, context.currentStage);

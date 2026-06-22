@@ -25,8 +25,9 @@ router.get('/', async (req, res, next) => {
       config: {
         databaseConfigured: Boolean(env.DATABASE_URL),
         adminApiKeyConfigured: Boolean(env.ADMIN_API_KEY),
-        geminiConfigured: Boolean(env.GEMINI_API_KEY),
-        geminiModel: env.GEMINI_MODEL,
+        openaiConfigured: Boolean(env.OPENAI_API_KEY),
+        openaiModel: env.OPENAI_MODEL,
+        openaiMaxOutputTokens: env.OPENAI_MAX_OUTPUT_TOKENS,
         whatsappSessionPath: env.WHATSAPP_SESSION_PATH,
         nodeEnv: env.NODE_ENV,
         port: env.PORT

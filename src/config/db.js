@@ -43,7 +43,8 @@ async function seedDefaultSettings() {
     ['video_link', env.VIDEO_LINK],
     ['pdf_link', env.PDF_LINK],
     ['hotmart_link', env.HOTMART_LINK],
-    ['gemini_model', env.GEMINI_MODEL]
+    ['openai_model', env.OPENAI_MODEL],
+    ['openai_max_output_tokens', String(env.OPENAI_MAX_OUTPUT_TOKENS)]
   ];
 
   for (const [key, value] of settings) {
