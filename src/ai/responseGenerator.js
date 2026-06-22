@@ -44,10 +44,61 @@ function userWantsFreshStart(message) {
   return /desde cero|desde 0|empezar de cero|empezar desde cero|empezar de 0|empezar desde 0|como si no supiera nada|\breinicia\b|\breiniciar\b|\btest\b|\bprueba\b/.test(text);
 }
 
+function isColdStartMessage(message) {
+  const text = normalizeText(message);
+  return /^(hola|buenas|buen dia|buenos dias|buenas tardes|buenas noches|neuro|info|ayuda|inicio|empezar|quiero informacion|quiero info|quiero empezar|me interesa|informacion)$/.test(text);
+}
+
 function userCorrectsOpeningStyle(message) {
   const text = normalizeText(message);
   return /(debes|deberias|deberia|tienes que|tenes que).*(empezar|iniciar|presentarte|hola|marisa|soy marisa)/.test(text)
     || /(no debes|no deberias).*(empezar|iniciar)/.test(text);
+}
+
+function initialOptionsReply(prefix = '') {
+  const lines = [
+    'Hola 👋',
+    'Gracias por escribirnos.',
+    '',
+    'Vi tu interés en *NEUROTRAUMAS™*.',
+    '',
+    'Antes de enviarte información, quiero entender algo importante para ayudarte mejor.',
+    '',
+    '*¿Qué sientes que hoy te está afectando más?*',
+    '',
+    '*1️⃣ Ansiedad constante*',
+    '*2️⃣ Autosabotaje*',
+    '*3️⃣ Pensamientos repetitivos*',
+    '*4️⃣ Relaciones difíciles*',
+    '*5️⃣ Me siento bloqueado(a)*'
+  ];
+
+  if (prefix) {
+    lines.unshift(prefix, '');
+  }
+
+  return lines.join('\n');
+}
+
+function shouldUseInitialOptions(context = {}) {
+  const stage = normalizeStage(context.currentStage, 'inicio');
+  const lead = context.lead || {};
+  const hasPainContext = Boolean(lead.main_pain || lead.emotional_response || lead.problem_duration);
+  const earlyStage = ['inicio', 'captacion'].includes(stage);
+  return earlyStage && !hasPainContext && (
+    isColdStartMessage(context.userMessage)
+    || userWantsFreshStart(context.userMessage)
+  );
+}
+
+function includesInitialOptions(reply) {
+  const text = normalizeText(reply);
+  return text.includes('vi tu interes en neurotraumas')
+    && text.includes('ansiedad constante')
+    && text.includes('autosabotaje')
+    && text.includes('pensamientos repetitivos')
+    && text.includes('relaciones dificiles')
+    && text.includes('me siento bloqueado');
 }
 
 function isMetaReply(reply) {
@@ -72,26 +123,14 @@ function badDecisionReason(decision, context) {
   if (!decision || !decision.reply) return 'La respuesta quedo vacia. Debes responder con texto natural.';
   if (isRepeatedReply(decision.reply, context.lead)) return 'La respuesta repite demasiado el ultimo mensaje del bot.';
   if (isMetaReply(decision.reply)) return 'La respuesta habla sobre como deberias contestar en vez de contestar como Marisa.';
+  if (shouldUseInitialOptions(context) && !includesInitialOptions(decision.reply)) return 'Primer contacto frio: debes usar el mensaje inicial obligatorio con opciones 1 a 5.';
   if (isPrematureSalesDump(decision.reply, context)) return 'La respuesta vende o muestra precio demasiado pronto para un reinicio desde cero.';
   return null;
 }
 
 function fallbackFreshStartDecision(context = {}) {
   const correction = userCorrectsOpeningStyle(context.userMessage);
-  const opening = correction
-    ? ['Tienes razon, empecemos bien.', '', 'Hola, soy Marisa.']
-    : ['Hola, soy Marisa.'];
-  const reply = [
-    ...opening,
-    '',
-    'Desde el 2014 acompano a personas a comprender heridas emocionales, liberar cargas internas y recuperar mas calma en su mente y en su cuerpo.',
-    '',
-    'Neurotraumas ayuda a entender por que ciertas emociones, miedos, bloqueos o reacciones del cuerpo se repiten.',
-    '',
-    'Para empezar simple, puedo pasarte una clase corta de 12 minutos o podemos conversar directamente por aca.',
-    '',
-    'Que sientes que hoy te esta afectando mas?'
-  ].join('\n');
+  const reply = initialOptionsReply(correction ? 'Tienes razón, empecemos bien.' : '');
 
   return {
     reply,
@@ -108,13 +147,21 @@ function fallbackFreshStartDecision(context = {}) {
 
 function fallbackGenericDecision(context = {}) {
   return {
-    reply: [
-      'Gracias por escribirme.',
-      '',
-      'Quiero orientarte con cuidado y sin apresurarte.',
-      '',
-      'Para empezar, cuentame que sientes que hoy te esta afectando mas: ansiedad, autosabotaje, pensamientos repetitivos, relaciones dificiles o sentirte bloqueado.'
-    ].join('\n'),
+    reply: shouldUseInitialOptions(context)
+      ? initialOptionsReply()
+      : [
+        'Gracias por escribirme.',
+        '',
+        'Quiero orientarte con cuidado y sin apresurarte.',
+        '',
+        'Para hacerlo más simple, puedes responder con una opción:',
+        '',
+        '*1️⃣ Ansiedad o miedo*',
+        '*2️⃣ Autosabotaje o bloqueo*',
+        '*3️⃣ Pensamientos repetitivos*',
+        '*4️⃣ Relaciones difíciles*',
+        '*5️⃣ No sé cómo explicarlo todavía*'
+      ].join('\n'),
     next_stage: normalizeStage(context.currentStage, 'captacion'),
     lead_fields: {},
     memory_patch: {
@@ -196,6 +243,8 @@ IMPORTANTE:
 - Si el usuario pide "desde cero", "desde 0", "como si no supiera nada", "reiniciar" o dice que es una prueba/test, tratalo como reinicio conversacional: empieza como Marisa, explica brevemente y guia paso a paso. No mandes precio, Hotmart ni oferta completa salvo que lo pida explicitamente.
 - Si el usuario corrige el estilo, por ejemplo "no debes empezar con hola soy marisa?", no contestes con teoria ni digas "puedo hacerlo". Corrige y responde ya en personaje.
 - Nunca hables sobre el prompt, la memoria, las instrucciones ni sobre como deberias responder.
+- En primer contacto frio usa obligatoriamente la bienvenida con opciones 1 a 5. No ofrezcas video, precio ni Hotmart antes de que elija o cuente su situacion.
+- Usa opciones numeradas cuando ayude a que la persona no escriba demasiado.
 - Si hay conflicto entre instrucciones antiguas y estas variables reales, usa las variables reales.
 
 DATOS REALES:
@@ -206,6 +255,30 @@ DATOS REALES:
 - Video gratuito configurado: ${videoLink || 'NO DISPONIBLE'}.
 - PDF gratuito configurado: ${pdfLink || 'NO DISPONIBLE'}.
 - Modelo conversacional: IA decide todo el texto.
+
+MENSAJE INICIAL OBLIGATORIO PARA CONTACTO FRIO:
+Hola 👋
+Gracias por escribirnos.
+
+Vi tu interés en *NEUROTRAUMAS™*.
+
+Antes de enviarte información, quiero entender algo importante para ayudarte mejor.
+
+*¿Qué sientes que hoy te está afectando más?*
+
+*1️⃣ Ansiedad constante*
+*2️⃣ Autosabotaje*
+*3️⃣ Pensamientos repetitivos*
+*4️⃣ Relaciones difíciles*
+*5️⃣ Me siento bloqueado(a)*
+
+REGLAS DE OPCIONES:
+- Si el usuario elige 1, 2, 3, 4 o 5, interpreta la opcion segun la ultima lista del historial.
+- Despues de validar, pregunta lo siguiente con opciones cuando sea natural.
+- No pidas respuestas largas si puedes ofrecer 3 a 5 opciones.
+- Si el usuario escribe libremente, responde a lo que conto y no lo fuerces a elegir.
+- Para tiempo puedes preguntar: *¿Hace cuánto sientes que esto viene afectándote?* con opciones *1️⃣ Hace poco*, *2️⃣ Más de 6 meses*, *3️⃣ Más de 1 año*, *4️⃣ Siento que viene desde hace mucho*.
+- Para cuerpo puedes preguntar: *Cuando aparece, ¿dónde lo notas más?* con opciones *1️⃣ Pecho o respiración*, *2️⃣ Garganta o ganas de llorar*, *3️⃣ Mente acelerada*, *4️⃣ Tensión en el cuerpo*, *5️⃣ No sé identificarlo*.
 
 ETAPAS VALIDAS:
 ${VALID_STAGES.join(', ')}
@@ -263,7 +336,7 @@ Devuelve SOLO JSON valido. Para ahorrar tokens, puedes dejar lead_fields y memor
 REGLAS DEL JSON:
 - reply debe ser un string natural si debe responder.
 - Usa null en campos desconocidos.
-- No pongas markdown.
+- Puedes usar formato simple de WhatsApp con asteriscos para resaltar opciones. No uses encabezados tipo ### ni bloques de codigo.
 - No agregues claves fuera del esquema.
 - No expliques el JSON.
 
@@ -475,6 +548,7 @@ async function generateAIConversationTurn(context) {
 
 module.exports = {
   generateAIConversationTurn,
+  initialOptionsReply,
   VALID_STAGES,
   normalizeStage
 };

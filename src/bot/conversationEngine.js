@@ -4,7 +4,7 @@ const memoryService = require('../services/memoryService');
 const settingsService = require('../services/settingsService');
 const paymentService = require('../services/paymentService');
 const followupService = require('../services/followupService');
-const { generateAIConversationTurn, normalizeStage } = require('../ai/responseGenerator');
+const { generateAIConversationTurn, initialOptionsReply, normalizeStage } = require('../ai/responseGenerator');
 const { normalizeUserProvidedPhone } = require('../utils/normalizePhone');
 const { extractEmail, isValidEmail } = require('../utils/validators');
 const { addHours } = require('../utils/date');
@@ -335,25 +335,7 @@ function shouldResetStaleSalesState(lead, body) {
 }
 
 function aiUnavailableReply(error) {
-  const missingKey = /OPENAI_API_KEY/i.test(String(error && error.message ? error.message : error));
-
-  if (missingKey) {
-    return [
-      'Hola, gracias por escribirme.',
-      '',
-      'Tu mensaje quedo registrado correctamente.',
-      '',
-      'Para orientarte mejor, cuentame que sientes que hoy te esta afectando mas: ansiedad, autosabotaje, pensamientos repetitivos, relaciones dificiles o sentirte bloqueado.'
-    ].join('\n');
-  }
-
-  return [
-    'Hola, gracias por escribirme.',
-    '',
-    'Quiero orientarte con cuidado y sin apresurarte.',
-    '',
-    'Para empezar, cuentame que sientes que hoy te esta afectando mas: ansiedad, autosabotaje, pensamientos repetitivos, relaciones dificiles o sentirte bloqueado.'
-  ].join('\n');
+  return initialOptionsReply();
 }
 
 async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPayload }) {
