@@ -10,7 +10,12 @@ const blockedPromptFragments = [
   ['Debes responder a absolutamente todo', 'lo que la persona escriba'].join(' '),
   ['Hola, soy', 'Marisa'].join(' '),
   ['Vi tu interés en', 'NEUROTRAUMAS'].join(' '),
-  ['Precio especial por este canal: USD', '270'].join(' ')
+  ['Precio especial por este canal: USD', '270'].join(' '),
+  [['No estas', 'roto.'].join(' '), 'No te falta fuerza de voluntad.'].join(' '),
+  ['No estas', 'roto.'].join(' '),
+  ['Para orientarte mejor,', 'respondeme esto:'].join(' '),
+  ['Cual es tu nombre?', 'De que pais sos?'].join(' '),
+  ['veo que', 'venis liderando'].join(' ')
 ];
 
 function walk(dir) {

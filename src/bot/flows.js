@@ -35,26 +35,11 @@ function pdfLink(settings = {}) {
 }
 
 function firstMessage() {
-  return `Hola, soy ${BOT_NAME}, asistente del ${PRODUCT_NAME} 🌿🧠
+  return `Hola, soy ${BOT_NAME}, del ${PRODUCT_NAME} 🌿
 
-Gracias por estar aqui.
+Gracias por escribirme.
 
-Si llegaste hasta este espacio, probablemente hay algo en tu vida que ya no queres seguir repitiendo.
-
-Puede ser ansiedad, miedos, bloqueos, relaciones dificiles, problemas con el dinero, traumas emocionales o una sensacion de no avanzar.
-
-Y quiero decirte algo importante:
-
-✨ No estas roto.
-✨ No te falta fuerza de voluntad.
-✨ Muchas veces el problema esta en patrones emocionales que funcionan en automatico.
-
-Para orientarte mejor, respondeme esto:
-
-1️⃣ Cual es tu nombre?
-2️⃣ De que pais sos?
-3️⃣ Cual es tu numero de celular?
-4️⃣ Que problema te gustaria transformar primero?`;
+Para hablarte mejor y acompanarte de una forma mas cercana, cual es tu nombre?`;
 }
 
 function greetingMessage(settings = {}, lead = null) {
@@ -370,7 +355,7 @@ function diagnosticQuestion4() {
 }
 
 function askName() {
-  return `Para orientarte mejor, cual es tu nombre?`;
+  return `Me ayudas con tu nombre? Asi puedo hablarte de una forma mas cercana.`;
 }
 
 function askEmail() {

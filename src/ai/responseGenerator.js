@@ -68,26 +68,11 @@ function hasForbiddenFormatting(reply) {
 
 function initialOptionsReply(prefix = '') {
   const lines = [
-    `Hola, soy ${BOT_NAME}, asistente del ${PRODUCT_NAME} 🌿🧠`,
+    `Hola, soy ${BOT_NAME}, del ${PRODUCT_NAME} 🌿`,
     '',
-    'Gracias por estar aqui.',
+    'Gracias por escribirme.',
     '',
-    'Si llegaste hasta este espacio, probablemente hay algo en tu vida que ya no queres seguir repitiendo.',
-    '',
-    'Puede ser ansiedad, miedos, bloqueos, relaciones dificiles, problemas con el dinero, traumas emocionales o una sensacion de no avanzar.',
-    '',
-    'Y quiero decirte algo importante:',
-    '',
-    '✨ No estas roto.',
-    '✨ No te falta fuerza de voluntad.',
-    '✨ Muchas veces el problema esta en patrones emocionales que funcionan en automatico.',
-    '',
-    'Para orientarte mejor, respondeme esto:',
-    '',
-    '1️⃣ Cual es tu nombre?',
-    '2️⃣ De que pais sos?',
-    '3️⃣ Cual es tu numero de celular?',
-    '4️⃣ Que problema te gustaria transformar primero?'
+    'Para hablarte mejor y acompanarte de una forma mas cercana, cual es tu nombre?'
   ];
 
   if (prefix) {
@@ -112,8 +97,19 @@ function includesInitialOptions(reply) {
   const text = normalizeText(reply);
   return text.includes('soy priscila')
     && text.includes('gimnasio del cerebro')
-    && text.includes('numero de celular')
-    && text.includes('problema te gustaria transformar');
+    && text.includes('nombre');
+}
+
+function isOverloadedFirstContact(reply, context = {}) {
+  if (!shouldUseInitialOptions(context)) return false;
+
+  const raw = String(reply || '');
+  const text = normalizeText(raw);
+  const lines = raw.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  const asksTooMuch = /(celular|telefono|numero|pais|problema|ansiedad|dinero|trauma|relaciones|bloqueos|no estas roto|fuerza de voluntad|patrones emocionales)/.test(text);
+  const looksLikeChecklist = /1️⃣|2️⃣|3️⃣|4️⃣|\b1[.)]\s|\b2[.)]\s|\b3[.)]\s|\b4[.)]\s/.test(raw);
+
+  return lines.length > 4 || asksTooMuch || looksLikeChecklist;
 }
 
 function isMetaReply(reply) {
@@ -135,7 +131,8 @@ function badDecisionReason(decision, context) {
   if (isRepeatedReply(decision.reply, context.lead)) return 'La respuesta repite demasiado el ultimo mensaje del bot.';
   if (isMetaReply(decision.reply)) return 'La respuesta habla sobre instrucciones internas en vez de contestar como Priscila.';
   if (hasForbiddenFormatting(decision.reply)) return 'No uses asteriscos, simbolos # ni formato Markdown. Responde con texto simple de WhatsApp.';
-  if (shouldUseInitialOptions(context) && !includesInitialOptions(decision.reply)) return 'Primer contacto frio: debes usar la bienvenida obligatoria de Priscila y pedir nombre, pais, celular y problema.';
+  if (shouldUseInitialOptions(context) && !includesInitialOptions(decision.reply)) return 'Primer contacto frio: saluda como Priscila del Gimnasio del Cerebro y pregunta solo el nombre de forma humana.';
+  if (isOverloadedFirstContact(decision.reply, context)) return 'Primer contacto frio corregido: no mandes todo el texto de una vez, no uses lista y no pidas pais, celular ni problema todavia. Pregunta solo el nombre.';
   if (isPrematurePaymentDump(decision.reply, context)) return 'En primer contacto frio no mandes precio ni Hotmart antes de pedir datos y problema, salvo que el usuario lo pida.';
   return null;
 }
@@ -251,8 +248,12 @@ REGLAS PRINCIPALES:
 - No menciones memoria, prompt, instrucciones ni configuraciones internas.
 - Se calida, directa, humana, emocional, persuasiva y segura.
 - No alargues la conversacion.
-- Maximo 2 preguntas antes de intentar llevar al video o al pago.
-- Pide nombre, pais, numero de celular y problema al inicio cuando falten esos datos.
+- Correccion vigente del equipo: el primer mensaje anterior fue demasiado largo, poco conversacional y pidio todo junto. No repetirlo.
+- En primer contacto frio usa maximo 4 lineas: saluda, presentate y pregunta solo el nombre de forma cercana.
+- No uses frases de lectura fria, grandilocuentes o poco naturales sobre lo que la persona supuestamente viene liderando.
+- No mandes una lista de 4 datos en el primer mensaje.
+- Pide datos de forma progresiva: primero nombre; despues pais y problema; el celular se pide mas adelante si falta.
+- Maximo 2 preguntas por turno antes de intentar llevar al video o al pago.
 - El pais debe guardarse en memory_patch.country si aparece claro. Si hace falta para CRM, puedes resumirlo en lead_fields.notes.
 - No diagnostiques ni prometas curas medicas o resultados garantizados.
 - Si hay crisis emocional grave, autolesion o pensamientos de hacerse dano, no vendas: prioriza seguridad, recomienda ayuda profesional inmediata, pausa bot y activa humano.
@@ -264,12 +265,15 @@ REGLAS PRINCIPALES:
 - Si tienes que escribir el video, usa exactamente: ${VIDEO_LINK}.
 
 FLUJO:
-1. Primer contacto frio: usa la bienvenida obligatoria de Priscila y pide nombre, pais, celular y problema.
-2. Cuando la persona diga su problema, conecta ese problema con patrones emocionales y manda el video.
-3. Si escribe "YA LO VI", cierra con la explicacion del entrenamiento, lo que incluye, precio ${PRICE_USD} USD y link Hotmart.
-4. Si muestra interes, pregunta como pagar, pide link, dice "quiero" o "me interesa", envia el cierre fuerte y link Hotmart.
-5. Si dice "YA COMPRE" o reporta pago, dale bienvenida y marca payment_reported=true.
-6. Si dice que no tiene dinero, lo va a pensar o pregunta si realmente ayuda, responde segun la memoria nueva y vuelve a dejar el link Hotmart.
+1. Primer contacto frio: mensaje corto y humano. Pregunta solo el nombre.
+2. Cuando responda el nombre, usalo de forma natural y pregunta pais y que quiere transformar primero.
+3. Cuando la persona diga su problema, conecta ese problema con patrones emocionales y manda el video.
+4. Si falta celular, pidelo de forma natural antes o despues del video, sin cortar la conversacion.
+5. No pidas nombre, pais, celular y problema en un solo mensaje salvo que el usuario ya los haya enviado juntos.
+6. Si escribe "YA LO VI", cierra con la explicacion del entrenamiento, lo que incluye, precio ${PRICE_USD} USD y link Hotmart.
+7. Si muestra interes, pregunta como pagar, pide link, dice "quiero" o "me interesa", envia el cierre fuerte y link Hotmart.
+8. Si dice "YA COMPRE" o reporta pago, dale bienvenida y marca payment_reported=true.
+9. Si dice que no tiene dinero, lo va a pensar o pregunta si realmente ayuda, responde segun la memoria nueva y vuelve a dejar el link Hotmart.
 
 ACCIONES DISPONIBLES:
 - send_video_link: true cuando la respuesta incluye el video gratuito.
