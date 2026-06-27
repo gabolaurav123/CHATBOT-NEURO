@@ -87,7 +87,7 @@ CRM_SECTION=holografica
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.4-mini
 OPENAI_MAX_OUTPUT_TOKENS=700
-HOTMART_LINK=
+HOTMART_LINK=https://pay.hotmart.com/W101807995K
 VIDEO_LINK=https://youtu.be/btHy8kSC4E4
 PDF_LINK=
 PRODUCT_NORMAL_PRICE=72
@@ -204,12 +204,12 @@ Al iniciar, el servidor ejecuta `src/database/migrations/schema.sql` con `CREATE
 
 El flujo automatico conversa como Priscila usando OpenAI como unico motor conversacional. La IA decide la respuesta, la etapa y acciones como enviar Hotmart, reportar pago, pausar o activar takeover humano. El backend solo guarda estado, mensajes, memoria y ejecuta acciones tecnicas.
 
-El video inicial se configura con `VIDEO_LINK`. Es solo una herramienta de apoyo: el bot puede enviarlo si el usuario lo acepta o lo pide, pero debe seguir diagnosticando, acompanando y vendiendo normalmente aunque el usuario no lo vea.
+El video inicial se configura con `VIDEO_LINK`. El flujo nuevo primero da una bienvenida con opciones, luego valida el problema elegido, envia el video y espera que la persona responda `YA LO VI`. Despues de eso no manda Hotmart de golpe: presenta el entrenamiento, pregunta si quiere el acceso y recien pide nombre, pais y celular antes de enviar el link.
 
 El acceso oficial de Hotmart se configura con `HOTMART_LINK` en Seenode o desde el CRM:
 
 ```text
-HOTMART_LINK=
+HOTMART_LINK=https://pay.hotmart.com/W101807995K
 ```
 
 ## Memoria 24 Horas

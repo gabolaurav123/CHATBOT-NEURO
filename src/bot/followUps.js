@@ -2,7 +2,7 @@ const { env } = require('../config/env');
 const { addHours, addDays } = require('../utils/date');
 
 const VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
-const HOTMART_PLACEHOLDER = '(LINK HOTMART)';
+const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/W101807995K';
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
 
 function cleanHotmartLink(hotmartLink) {
@@ -43,7 +43,7 @@ Hay personas que siguen esperando el momento perfecto.
 
 Y hay personas que deciden empezar incluso con miedo.
 
-Si queres sacar cargas emocionales, trabajar tus patrones y empezar a cambiar radicalmente tu vida, este puede ser tu momento.
+Si queres trabajar tus cargas emocionales, tus patrones y empezar a cambiar tu vida desde adentro, este puede ser tu momento.
 
 El acceso al entrenamiento esta aqui:
 

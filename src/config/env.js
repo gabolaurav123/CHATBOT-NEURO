@@ -30,7 +30,7 @@ const env = {
   PRODUCT_PRICE: numberFromEnv('PRODUCT_PRICE', numberFromEnv('PRODUCT_SPECIAL_PRICE', 72)),
   VIDEO_LINK: process.env.VIDEO_LINK || 'https://youtu.be/btHy8kSC4E4',
   PDF_LINK: process.env.PDF_LINK || '',
-  HOTMART_LINK: process.env.HOTMART_LINK || '',
+  HOTMART_LINK: process.env.HOTMART_LINK || 'https://pay.hotmart.com/W101807995K',
   MEMORY_EXPIRATION_HOURS: numberFromEnv('MEMORY_EXPIRATION_HOURS', 24),
   FOLLOWUP_1_HOURS: numberFromEnv('FOLLOWUP_1_HOURS', 12),
   FOLLOWUP_PAYMENT_1_HOURS: numberFromEnv('FOLLOWUP_PAYMENT_1_HOURS', 6),

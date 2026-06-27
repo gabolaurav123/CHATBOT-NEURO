@@ -13,7 +13,7 @@ const { buildPaymentFollowUps } = require('../bot/followUps');
 
 const router = express.Router();
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
-const HOTMART_PLACEHOLDER = '(LINK HOTMART)';
+const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/W101807995K';
 
 function activeHotmartLink(settings = {}) {
   const link = String(settings.hotmart_link || '').trim();

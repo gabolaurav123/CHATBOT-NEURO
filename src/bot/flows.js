@@ -2,7 +2,7 @@ const BOT_NAME = 'Priscila';
 const PRODUCT_NAME = 'Gimnasio del Cerebro';
 const VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
 const PRICE_USD = '72';
-const HOTMART_PLACEHOLDER = '(LINK HOTMART)';
+const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/W101807995K';
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
 
 function withName(lead, fallback = '') {
@@ -35,11 +35,24 @@ function pdfLink(settings = {}) {
 }
 
 function firstMessage() {
-  return `Hola, soy ${BOT_NAME}, del ${PRODUCT_NAME} 🌿
+  return `Hola 🌿 soy ${BOT_NAME}, del ${PRODUCT_NAME} 🧠
 
-Gracias por escribirme.
+Que bueno que llegaste hasta aqui.
 
-Para hablarte mejor y acompanarte de una forma mas cercana, cual es tu nombre?`;
+Este espacio es para personas que sienten que hay algo en su vida que se repite, aunque intenten cambiarlo.
+
+Puede ser ansiedad, bloqueos, relaciones dificiles, miedo, heridas emocionales, problemas con el dinero o sensacion de no avanzar.
+
+Para orientarte mejor, elegi la opcion que mas se parece a lo que estas viviendo ahora:
+
+1️⃣ Ansiedad o pensamientos que no paran
+2️⃣ Miedos o inseguridad
+3️⃣ Bloqueos con el dinero
+4️⃣ Relaciones o heridas emocionales
+5️⃣ Traumas o cargas del pasado
+6️⃣ Falta de proposito o sensacion de estar estancad@
+
+Respondeme solo con el numero o con una palabra ❤️`;
 }
 
 function greetingMessage(settings = {}, lead = null) {
@@ -51,17 +64,17 @@ function infoWelcomeMessage() {
 }
 
 function problemWelcomeMessage() {
-  return `Entiendo ❤️
+  return `Te entiendo ❤️
 
 Eso que contas puede estar conectado con patrones emocionales que se repiten en automatico.
 
 En el ${PRODUCT_NAME} trabajamos con herramientas para empezar a mirar eso desde la raiz y reconfigurar tu mundo interno.
 
-Si queres cambiar radicalmente tu vida, primero mira este video:
+Mira este video para entender como funciona el metodo:
 
 🎥 ${VIDEO_LINK}
 
-Cuando lo termines, escribime "YA LO VI" y te explico como entrar al entrenamiento.`;
+Cuando lo termines, escribime "YA LO VI" 🌿`;
 }
 
 function videoSentMessage(settings = {}) {
@@ -142,17 +155,32 @@ function pdfWaitingMessage() {
 }
 
 function programIntroMessage() {
-  return `El entrenamiento del ${PRODUCT_NAME} esta disenado para ayudarte a trabajar bloqueos, heridas, miedos y patrones emocionales con una metodologia paso a paso.
+  return `Que bueno que lo viste ❤️
 
-Si ya viste el video, puedo pasarte el acceso para entrar.`;
+Entonces ya entendiste algo importante:
+
+No se trata solo de pensar positivo.
+Tampoco se trata solo de fuerza de voluntad.
+
+Muchas veces lo que vivimos esta conectado con patrones emocionales que se repiten en automatico.
+
+El entrenamiento del ${PRODUCT_NAME} esta creado para que puedas trabajar paso a paso tus bloqueos, heridas, miedos y patrones internos con herramientas practicas.
+
+Queres que te pase el acceso para entrar al entrenamiento? 🌿`;
 }
 
 function offerMessage(settings = {}, lead = null) {
   const name = withName(lead);
   const { special } = prices(settings);
-  const link = hotmartLink(settings);
 
-  return `Perfecto${name ? `, ${name}` : ''} ❤️
+  return `Que bueno que lo viste${name ? `, ${name}` : ''} ❤️
+
+Entonces ya entendiste algo importante:
+
+No se trata solo de pensar positivo.
+Tampoco se trata solo de fuerza de voluntad.
+
+Muchas veces lo que vivimos esta conectado con patrones emocionales que se repiten en automatico.
 
 El entrenamiento del ${PRODUCT_NAME} incluye:
 
@@ -167,9 +195,7 @@ El entrenamiento del ${PRODUCT_NAME} incluye:
 
 La inversion es de ${special} USD.
 
-Si sentis que ya es momento de sacar esos patrones y cambiar tu vida desde adentro, podes entrar aqui:
-
-${link}`;
+Queres que te pase el acceso para entrar al entrenamiento? 🌿`;
 }
 
 function priceOnlyMessage(settings = {}) {
@@ -178,13 +204,11 @@ function priceOnlyMessage(settings = {}) {
 
 Incluye acceso de por vida a las clases, materiales y herramientas.
 
-No es un pago temporal ni algo que se vence.
+Pero antes de decidir, te recomiendo ver el video para entender bien como funciona el metodo:
 
-Podes volver al contenido cada vez que lo necesites.
+🎥 ${videoLink(settings)}
 
-Aqui tenes el acceso:
-
-${hotmartLink(settings)}`;
+Si despues sentis que es para vos, te paso el acceso 🌿`;
 }
 
 function summaryMessage(settings = {}) {

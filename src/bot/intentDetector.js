@@ -146,7 +146,7 @@ function detectViewedPdf(message) {
 
 function detectProgramDetailsIntent(message) {
   const text = normalizeText(message);
-  return /(como funciona|que incluye|qué incluye|de que trata|programa|neurotraumas|cuanto dura|duracion|clases|certificado|garantia|garantía|resumen)/.test(text);
+  return /(como funciona|que incluye|qué incluye|de que trata|programa|gimnasio|cerebro|cuanto dura|duracion|clases|certificado|garantia|garantía|resumen)/.test(text);
 }
 
 function detectFreeMaterialIntent(message) {

@@ -28,7 +28,7 @@ const STAGE_ALIASES = {
 };
 
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
-const HOTMART_PLACEHOLDER = '(LINK HOTMART)';
+const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/W101807995K';
 
 const ALLOWED_AI_LEAD_FIELDS = new Set([
   'name',
