@@ -117,21 +117,30 @@ function decorateConversation(row) {
     whatsapp_id: row.whatsapp_id,
     whatsapp_lid: row.whatsapp_lid,
     display_phone: row.display_phone,
+    crm_section: row.crm_section,
     name: row.name,
     email: row.email
   });
 
   return {
     ...row,
+    section: decoratedLead && decoratedLead.section,
+    product: decoratedLead && decoratedLead.product,
     display_contact: decoratedLead && decoratedLead.display_contact,
     phone_is_real: decoratedLead && decoratedLead.phone_is_real
   };
 }
 
-async function listConversations({ limit = 100, offset = 0, search, q } = {}) {
+async function listConversations({ limit = 100, offset = 0, search, q, crm_section, section, product } = {}) {
   const params = [];
   const clauses = [];
   const searchText = search || q;
+  const crmSection = crm_section || section || product;
+
+  if (crmSection) {
+    params.push(crmSection);
+    clauses.push(`l.crm_section = $${params.length}`);
+  }
 
   if (searchText) {
     if (isUuid(searchText)) {
@@ -164,6 +173,7 @@ async function listConversations({ limit = 100, offset = 0, search, q } = {}) {
             l.whatsapp_id,
             l.whatsapp_lid,
             l.display_phone,
+            l.crm_section,
             l.name,
             l.email,
             l.username,

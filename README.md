@@ -17,6 +17,7 @@ Variables criticas:
 - `DATABASE_URL`: conexion PostgreSQL. Es la unica fuente de conexion a base de datos.
 - `OPENAI_API_KEY`: API key de OpenAI. Es la unica fuente de credenciales de IA.
 - `ADMIN_API_KEY`: clave que debe enviar el CRM en `x-admin-api-key`.
+- `CRM_SECTION`: apartado del CRM donde se guardan los leads de este bot. Para Holografica usa `holografica`.
 - `OPENAI_MODEL`: modelo de OpenAI, recomendado `gpt-5.4-mini`.
 - `OPENAI_MAX_OUTPUT_TOKENS`: limite de salida del modelo, recomendado `700` para que el JSON conversacional no se corte.
 - `HOTMART_LINK`: link de pago, tambien editable desde `bot_settings`.
@@ -82,6 +83,7 @@ Variables:
 ```env
 DATABASE_URL=
 ADMIN_API_KEY=
+CRM_SECTION=holografica
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.4-mini
 OPENAI_MAX_OUTPUT_TOKENS=700
@@ -180,6 +182,7 @@ Este endpoint envia el mensaje con Baileys al `whatsapp_id` del lead. Tambien ac
 - No uses `parseInt` para telefonos, JIDs ni IDs. Todos deben tratarse como `string`.
 - `GET /api/leads/:id`, `GET /api/conversations/:leadId` y `GET /api/messages/:leadId` requieren UUID real. Si no es UUID, el backend responde `400 { "error": "Invalid lead id" }`.
 - Para busqueda textual de conversaciones usa `GET /api/conversations?search=texto`; el backend no compara `uuid = text`.
+- Para mostrar solo el apartado de Holografica, el CRM puede llamar `GET /api/leads?crm_section=holografica`, `GET /api/conversations?crm_section=holografica`, `GET /api/payments?crm_section=holografica` y `GET /api/followups?crm_section=holografica`. Tambien se aceptan los alias `section` y `product`.
 - Para editar follow-ups usa `PATCH /api/followups/:id` con `message`, `scheduled_at`, `type` y `status`.
 - Para enviar un follow-up ahora usa `POST /api/followups/:id/send-now`; el backend solo marca `sent` despues de que Baileys confirma el envio.
 

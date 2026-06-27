@@ -19,6 +19,7 @@ const env = {
   PORT: numberFromEnv('PORT', 80),
   NODE_ENV: process.env.NODE_ENV || 'development',
   ADMIN_API_KEY: process.env.ADMIN_API_KEY,
+  CRM_SECTION: process.env.CRM_SECTION || 'holografica',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   OPENAI_MODEL: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
   OPENAI_MAX_OUTPUT_TOKENS: numberFromEnv('OPENAI_MAX_OUTPUT_TOKENS', 700),

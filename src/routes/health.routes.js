@@ -26,6 +26,7 @@ router.get('/', async (req, res, next) => {
       config: {
         databaseConfigured: Boolean(env.DATABASE_URL),
         adminApiKeyConfigured: Boolean(env.ADMIN_API_KEY),
+        crmSection: env.CRM_SECTION,
         openaiConfigured: Boolean(env.OPENAI_API_KEY),
         openaiModel: env.OPENAI_MODEL,
         openaiMaxOutputTokens: env.OPENAI_MAX_OUTPUT_TOKENS,

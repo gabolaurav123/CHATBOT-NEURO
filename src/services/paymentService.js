@@ -2,23 +2,33 @@ const { query } = require('../config/db');
 const { env } = require('../config/env');
 
 async function createPayment({ leadId, phone, paymentLink, amount, currency = 'USD', metadata = {} }) {
+  const paymentMetadata = {
+    crm_section: env.CRM_SECTION,
+    ...metadata
+  };
   const result = await query(
     `INSERT INTO payments (lead_id, phone, payment_link, amount, currency, metadata)
      VALUES ($1, $2, $3, $4, $5, $6::jsonb)
      RETURNING *`,
-    [leadId, phone, paymentLink || null, amount || env.PRODUCT_PRICE, currency, JSON.stringify(metadata)]
+    [leadId, phone, paymentLink || null, amount || env.PRODUCT_PRICE, currency, JSON.stringify(paymentMetadata)]
   );
 
   return result.rows[0];
 }
 
-async function listPayments({ limit = 100, offset = 0, status } = {}) {
+async function listPayments({ limit = 100, offset = 0, status, crm_section, section, product } = {}) {
   const params = [];
   const clauses = [];
+  const crmSection = crm_section || section || product;
 
   if (status) {
     params.push(status);
     clauses.push(`p.status = $${params.length}`);
+  }
+
+  if (crmSection) {
+    params.push(crmSection);
+    clauses.push(`l.crm_section = $${params.length}`);
   }
 
   params.push(Math.min(Number(limit) || 100, 500));
@@ -28,7 +38,7 @@ async function listPayments({ limit = 100, offset = 0, status } = {}) {
 
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   const result = await query(
-    `SELECT p.*, l.name, l.email
+    `SELECT p.*, l.name, l.email, l.crm_section, l.crm_section AS section, l.crm_section AS product
      FROM payments p
      LEFT JOIN leads l ON l.id = p.lead_id
      ${where}

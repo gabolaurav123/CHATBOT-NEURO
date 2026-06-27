@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS leads (
   name TEXT,
   email TEXT,
   username TEXT,
+  crm_section TEXT DEFAULT 'holografica',
   source_keyword TEXT,
   main_pain TEXT,
   emotional_response TEXT,
@@ -49,6 +50,7 @@ CREATE TABLE IF NOT EXISTS leads (
 ALTER TABLE leads ALTER COLUMN phone DROP NOT NULL;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS whatsapp_lid TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS display_phone TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS crm_section TEXT DEFAULT 'holografica';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS objection_type TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS video_sent BOOLEAN DEFAULT FALSE;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS video_sent_at TIMESTAMP;
@@ -59,6 +61,7 @@ ALTER TABLE leads ADD COLUMN IF NOT EXISTS offer_presented_at TIMESTAMP;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS purchase_intent BOOLEAN DEFAULT FALSE;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS closed_conversation BOOLEAN DEFAULT FALSE;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS crisis_detected BOOLEAN DEFAULT FALSE;
+UPDATE leads SET crm_section = 'holografica' WHERE crm_section IS NULL OR crm_section = '';
 
 CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -171,6 +174,7 @@ CREATE INDEX IF NOT EXISTS idx_leads_whatsapp_lid ON leads(whatsapp_lid);
 CREATE INDEX IF NOT EXISTS idx_leads_display_phone ON leads(display_phone);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(lead_status);
 CREATE INDEX IF NOT EXISTS idx_leads_funnel_stage ON leads(funnel_stage);
+CREATE INDEX IF NOT EXISTS idx_leads_crm_section ON leads(crm_section);
 CREATE INDEX IF NOT EXISTS idx_conversations_lead_id ON conversations(lead_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_whatsapp_id ON conversations(whatsapp_id);
 CREATE INDEX IF NOT EXISTS idx_messages_lead_created ON messages(lead_id, created_at DESC);

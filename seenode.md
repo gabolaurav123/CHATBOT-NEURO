@@ -31,6 +31,7 @@ Configura estas variables en el panel de Seenode:
 ```env
 DATABASE_URL=
 ADMIN_API_KEY=
+CRM_SECTION=holografica
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.4-mini
 OPENAI_MAX_OUTPUT_TOKENS=700

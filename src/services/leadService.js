@@ -10,6 +10,7 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'whatsapp_id',
   'whatsapp_lid',
   'display_phone',
+  'crm_section',
   'first_contact_at',
   'last_contact_at',
   'source_keyword',
@@ -69,6 +70,8 @@ function decorateLeadContact(lead) {
 
   return {
     ...lead,
+    section: lead.crm_section,
+    product: lead.crm_section,
     phone_is_real: phoneIsReal,
     display_contact: displayContact
   };
@@ -101,6 +104,7 @@ async function upsertLeadByWhatsAppIdentity({ identity, sourceKeyword }) {
       whatsapp_id: identity.whatsapp_id || existing.whatsapp_id,
       whatsapp_lid: identity.whatsapp_lid || existing.whatsapp_lid,
       display_phone: identity.display_phone || existing.display_phone,
+      crm_section: env.CRM_SECTION,
       source_keyword: existing.source_keyword || sourceKeyword || null,
       first_contact_at: existing.first_contact_at || new Date(),
       last_contact_at: new Date(),
@@ -116,18 +120,20 @@ async function upsertLeadByWhatsAppIdentity({ identity, sourceKeyword }) {
        whatsapp_id,
        whatsapp_lid,
        display_phone,
+       crm_section,
        source_keyword,
        first_contact_at,
        last_contact_at,
        memory_expires_at
      )
-     VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), NOW() + ($6::int * INTERVAL '1 hour'))
+     VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), NOW() + ($7::int * INTERVAL '1 hour'))
      RETURNING *`,
     [
       identity.phone || null,
       identity.whatsapp_id || null,
       identity.whatsapp_lid || null,
       identity.display_phone || null,
+      env.CRM_SECTION,
       sourceKeyword || null,
       env.MEMORY_EXPIRATION_HOURS
     ]
@@ -160,14 +166,20 @@ async function getLeadByPhone(phone) {
   return decorateLeadContact(result.rows[0] || null);
 }
 
-async function listLeads({ limit = 100, offset = 0, status, q, search } = {}) {
+async function listLeads({ limit = 100, offset = 0, status, q, search, crm_section, section, product } = {}) {
   const params = [];
   const clauses = [];
   const searchText = q || search;
+  const crmSection = crm_section || section || product;
 
   if (status) {
     params.push(status);
     clauses.push(`lead_status = $${params.length}`);
+  }
+
+  if (crmSection) {
+    params.push(crmSection);
+    clauses.push(`crm_section = $${params.length}`);
   }
 
   if (searchText) {
