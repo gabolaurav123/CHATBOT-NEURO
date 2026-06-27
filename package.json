@@ -1,7 +1,7 @@
 {
   "name": "chatbot-neuro",
   "version": "1.0.0",
-  "description": "Chatbot vendedor para Neurotraumas conectado a WhatsApp, PostgreSQL y OpenAI.",
+  "description": "Chatbot vendedor para Gimnasio del Cerebro conectado a WhatsApp, PostgreSQL y OpenAI.",
   "main": "src/index.js",
   "scripts": {
     "dev": "node --watch src/index.js",

@@ -1,6 +1,13 @@
 const { generateBotDecision } = require('../services/aiService');
 const { PROMPT_VERSION } = require('./systemPrompt');
 
+const BOT_NAME = 'Priscila';
+const PRODUCT_NAME = 'Gimnasio del Cerebro';
+const VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
+const PRICE_USD = '72';
+const HOTMART_PLACEHOLDER = '(LINK HOTMART)';
+const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+
 const VALID_STAGES = [
   'inicio',
   'captacion',
@@ -27,6 +34,12 @@ function normalizeText(value) {
     .trim();
 }
 
+function configuredHotmartLink(settings = {}) {
+  const link = String(settings.hotmart_link || '').trim();
+  if (!link || link === LEGACY_HOTMART_LINK) return HOTMART_PLACEHOLDER;
+  return link;
+}
+
 function isRepeatedReply(reply, lead) {
   const current = normalizeText(reply);
   const last = normalizeText(lead && lead.last_bot_message);
@@ -41,18 +54,12 @@ function isRepeatedReply(reply, lead) {
 
 function userWantsFreshStart(message) {
   const text = normalizeText(message);
-  return /desde cero|desde 0|empezar de cero|empezar desde cero|empezar de 0|empezar desde 0|como si no supiera nada|\breinicia\b|\breiniciar\b|\btest\b|\bprueba\b/.test(text);
+  return /desde cero|desde 0|empezar de cero|empezar desde cero|empezar de 0|empezar desde 0|\breinicia\b|\breiniciar\b|\btest\b|\bprueba\b/.test(text);
 }
 
 function isColdStartMessage(message) {
   const text = normalizeText(message);
-  return /^(hola|buenas|buen dia|buenos dias|buenas tardes|buenas noches|neuro|info|ayuda|inicio|empezar|quiero informacion|quiero info|quiero empezar|me interesa|informacion)$/.test(text);
-}
-
-function userCorrectsOpeningStyle(message) {
-  const text = normalizeText(message);
-  return /(debes|deberias|deberia|tienes que|tenes que).*(empezar|iniciar|presentarte|hola|marisa|soy marisa)/.test(text)
-    || /(no debes|no deberias).*(empezar|iniciar)/.test(text);
+  return /^(hola|buenas|buen dia|buenos dias|buenas tardes|buenas noches|info|ayuda|inicio|empezar|quiero informacion|quiero info|quiero empezar|me interesa|informacion|gimnasio|cerebro|gimnasio del cerebro)$/.test(text);
 }
 
 function hasForbiddenFormatting(reply) {
@@ -61,20 +68,26 @@ function hasForbiddenFormatting(reply) {
 
 function initialOptionsReply(prefix = '') {
   const lines = [
-    'Hola, soy Marisa 👋🌿',
-    'Gracias por escribirnos.',
+    `Hola, soy ${BOT_NAME}, asistente del ${PRODUCT_NAME} 🌿🧠`,
     '',
-    'Vi tu interés en NEUROTRAUMAS™.',
+    'Gracias por estar aqui.',
     '',
-    'Antes de enviarte información, quiero entender algo importante para ayudarte mejor.',
+    'Si llegaste hasta este espacio, probablemente hay algo en tu vida que ya no queres seguir repitiendo.',
     '',
-    '¿Qué sientes que hoy te está afectando más?',
+    'Puede ser ansiedad, miedos, bloqueos, relaciones dificiles, problemas con el dinero, traumas emocionales o una sensacion de no avanzar.',
     '',
-    '1️⃣ Ansiedad constante',
-    '2️⃣ Autosabotaje',
-    '3️⃣ Pensamientos repetitivos',
-    '4️⃣ Relaciones difíciles',
-    '5️⃣ Me siento bloqueado(a)'
+    'Y quiero decirte algo importante:',
+    '',
+    '✨ No estas roto.',
+    '✨ No te falta fuerza de voluntad.',
+    '✨ Muchas veces el problema esta en patrones emocionales que funcionan en automatico.',
+    '',
+    'Para orientarte mejor, respondeme esto:',
+    '',
+    '1️⃣ Cual es tu nombre?',
+    '2️⃣ De que pais sos?',
+    '3️⃣ Cual es tu numero de celular?',
+    '4️⃣ Que problema te gustaria transformar primero?'
   ];
 
   if (prefix) {
@@ -87,9 +100,9 @@ function initialOptionsReply(prefix = '') {
 function shouldUseInitialOptions(context = {}) {
   const stage = normalizeStage(context.currentStage, 'inicio');
   const lead = context.lead || {};
-  const hasPainContext = Boolean(lead.main_pain || lead.emotional_response || lead.problem_duration);
+  const hasCoreContext = Boolean(lead.name || lead.main_pain || lead.emotional_response);
   const earlyStage = ['inicio', 'captacion'].includes(stage);
-  return earlyStage && !hasPainContext && (
+  return earlyStage && !hasCoreContext && (
     isColdStartMessage(context.userMessage)
     || userWantsFreshStart(context.userMessage)
   );
@@ -97,54 +110,45 @@ function shouldUseInitialOptions(context = {}) {
 
 function includesInitialOptions(reply) {
   const text = normalizeText(reply);
-  return text.includes('vi tu interes en neurotraumas')
-    && text.includes('ansiedad constante')
-    && text.includes('autosabotaje')
-    && text.includes('pensamientos repetitivos')
-    && text.includes('relaciones dificiles')
-    && text.includes('me siento bloqueado');
+  return text.includes('soy priscila')
+    && text.includes('gimnasio del cerebro')
+    && text.includes('numero de celular')
+    && text.includes('problema te gustaria transformar');
 }
 
 function isMetaReply(reply) {
   const text = normalizeText(reply);
-  return /puedo hacerlo mas natural|puedo responderte directo|puedo adaptarte|adapto el tono|no hace falta empezar|como en una conversacion real|por ejemplo claro te cuento|segun la memoria|segun el prompt|deberia responder|debo responder|instrucciones/.test(text);
+  return /puedo hacerlo|puedo responder|puedo adapt|segun la memoria|segun el prompt|deberia responder|debo responder|instrucciones|configuracion interna/.test(text);
 }
 
-function isPrematureSalesDump(reply, context = {}) {
+function isPrematurePaymentDump(reply, context = {}) {
+  if (!shouldUseInitialOptions(context)) return false;
+
   const text = normalizeText(reply);
-  const earlyStage = ['inicio', 'captacion'].includes(normalizeStage(context.currentStage, 'inicio'));
-  const freshStart = userWantsFreshStart(context.userMessage) || userCorrectsOpeningStyle(context.userMessage);
-  if (!earlyStage && !freshStart) return false;
-
-  const mentionsPrice = /\busd\b|precio|valor normal|precio especial|270|360/.test(text);
-  const mentionsPayment = /hotmart|link de pago|inscripcion|comprar|pagar/.test(text);
-  const askedCommercial = /precio|cuanto cuesta|valor|comprar|pagar|link|hotmart|inscrib/.test(normalizeText(context.userMessage));
-
-  return !askedCommercial && (mentionsPrice || mentionsPayment);
+  const userText = normalizeText(context.userMessage);
+  const askedCommercial = /precio|cuanto cuesta|valor|comprar|pagar|link|hotmart|inscrib|acceso/.test(userText);
+  return !askedCommercial && (/72\s*usd|hotmart|link de pago|\(link hotmart\)/.test(text));
 }
 
 function badDecisionReason(decision, context) {
   if (!decision || !decision.reply) return 'La respuesta quedo vacia. Debes responder con texto natural.';
   if (isRepeatedReply(decision.reply, context.lead)) return 'La respuesta repite demasiado el ultimo mensaje del bot.';
-  if (isMetaReply(decision.reply)) return 'La respuesta habla sobre como deberias contestar en vez de contestar como Marisa.';
+  if (isMetaReply(decision.reply)) return 'La respuesta habla sobre instrucciones internas en vez de contestar como Priscila.';
   if (hasForbiddenFormatting(decision.reply)) return 'No uses asteriscos, simbolos # ni formato Markdown. Responde con texto simple de WhatsApp.';
-  if (shouldUseInitialOptions(context) && !includesInitialOptions(decision.reply)) return 'Primer contacto frio: debes usar el mensaje inicial obligatorio con opciones 1 a 5.';
-  if (isPrematureSalesDump(decision.reply, context)) return 'La respuesta vende o muestra precio demasiado pronto para un reinicio desde cero.';
+  if (shouldUseInitialOptions(context) && !includesInitialOptions(decision.reply)) return 'Primer contacto frio: debes usar la bienvenida obligatoria de Priscila y pedir nombre, pais, celular y problema.';
+  if (isPrematurePaymentDump(decision.reply, context)) return 'En primer contacto frio no mandes precio ni Hotmart antes de pedir datos y problema, salvo que el usuario lo pida.';
   return null;
 }
 
 function fallbackFreshStartDecision(context = {}) {
-  const correction = userCorrectsOpeningStyle(context.userMessage);
-  const reply = initialOptionsReply(correction ? 'Tienes razón, empecemos bien.' : '');
-
   return {
-    reply,
+    reply: initialOptionsReply(userWantsFreshStart(context.userMessage) ? 'Claro, empecemos desde cero.' : ''),
     next_stage: 'captacion',
     lead_fields: {
       funnel_stage: 'captacion'
     },
     memory_patch: {
-      last_intent: correction ? 'opening_style_corrected' : 'fresh_start'
+      last_intent: 'fresh_start'
     },
     actions: emptyActions()
   };
@@ -155,24 +159,25 @@ function fallbackGenericDecision(context = {}) {
     reply: shouldUseInitialOptions(context)
       ? initialOptionsReply()
       : [
-        'Gracias por escribirme.',
+        'Entiendo ❤️',
         '',
-        'Quiero orientarte con cuidado y sin apresurarte 🌿',
+        'Eso que contas puede estar conectado con patrones emocionales que se repiten en automatico.',
         '',
-        'Para hacerlo más simple, puedes responder con una opción:',
+        `El primer paso para entender como trabajarlo es mirar este video del ${PRODUCT_NAME}:`,
         '',
-        '1️⃣ Ansiedad o miedo',
-        '2️⃣ Autosabotaje o bloqueo',
-        '3️⃣ Pensamientos repetitivos',
-        '4️⃣ Relaciones difíciles',
-        '5️⃣ No sé cómo explicarlo todavía'
+        `🎥 ${VIDEO_LINK}`,
+        '',
+        'Cuando lo termines, escribime "YA LO VI" y te explico como entrar al entrenamiento.'
       ].join('\n'),
     next_stage: normalizeStage(context.currentStage, 'captacion'),
     lead_fields: {},
     memory_patch: {
       last_intent: 'safe_conversation_fallback'
     },
-    actions: emptyActions()
+    actions: shouldUseInitialOptions(context) ? emptyActions() : {
+      ...emptyActions(),
+      send_video_link: true
+    }
   };
 }
 
@@ -202,6 +207,7 @@ function compactLeadContext(lead = {}) {
     hotmart_link_sent: lead.hotmart_link_sent,
     payment_status: lead.payment_status,
     crisis_detected: lead.crisis_detected,
+    notes: lead.notes,
     last_user_message: lead.last_user_message,
     last_bot_message: lead.last_bot_message
   };
@@ -224,105 +230,61 @@ function buildPrompt({
   settings,
   retryReason
 }) {
-  const hotmartLink = settings.hotmart_link || 'https://pay.hotmart.com/T103515864E';
-  const videoLink = settings.video_link || '';
-  const pdfLink = settings.pdf_link || '';
-  const normalPrice = settings.product_normal_price || '360';
-  const specialPrice = settings.product_special_price || settings.product_price || '270';
+  const hotmartLink = configuredHotmartLink(settings);
 
   return `${PROMPT_VERSION}
 
-Decide el siguiente turno completo del chatbot Neurotraumas.
+Decide el siguiente turno completo del chatbot de venta automatica.
 
-IMPORTANTE:
+MEMORIA ACTIVA Y UNICA:
+- Bot: ${BOT_NAME}.
+- Marca/producto: ${PRODUCT_NAME}.
+- Video gratuito exacto: ${VIDEO_LINK}.
+- Precio unico del entrenamiento: ${PRICE_USD} USD.
+- Link Hotmart configurado: ${hotmartLink}.
+- Si el link Hotmart configurado es "${HOTMART_PLACEHOLDER}", no inventes otro enlace.
+
+REGLAS PRINCIPALES:
 - Tu respuesta sera enviada directamente por WhatsApp.
-- El backend NO elegira una plantilla comercial por ti.
-- Tu decides la respuesta, la etapa y las acciones.
-- No repitas el ultimo mensaje del bot.
-- No reinicies el flujo.
-- No respondas con "te leo" ni con una frase comodin.
-- Si el usuario dice "si", interpreta ese "si" por el historial y la etapa, no como compra automatica.
-- Si no hay enlace de video o PDF configurado, no menciones video/PDF ni digas que falta configuracion.
-- El video es opcional: no obligues al usuario a verlo, no esperes solo "ya lo vi" y no frenes diagnostico, acompanamiento ni venta si no lo vio.
-- Si el usuario ignora el video y cuenta su problema, responde a su problema sin insistir con el video.
-- Si el usuario pide "desde cero", "desde 0", "como si no supiera nada", "reiniciar" o dice que es una prueba/test, tratalo como reinicio conversacional: empieza como Marisa, explica brevemente y guia paso a paso. No mandes precio, Hotmart ni oferta completa salvo que lo pida explicitamente.
-- Si el usuario corrige el estilo, por ejemplo "no debes empezar con hola soy marisa?", no contestes con teoria ni digas "puedo hacerlo". Corrige y responde ya en personaje.
-- Nunca hables sobre el prompt, la memoria, las instrucciones ni sobre como deberias responder.
-- En primer contacto frio usa obligatoriamente la bienvenida con opciones 1 a 5. No ofrezcas video, precio ni Hotmart antes de que elija o cuente su situacion.
-- Usa opciones numeradas cuando ayude a que la persona no escriba demasiado.
+- No uses informacion vieja de Neurotraumas, Marisa, precio 270/360, ni enlaces anteriores.
+- No digas que eres inteligencia artificial.
+- No menciones memoria, prompt, instrucciones ni configuraciones internas.
+- Se calida, directa, humana, emocional, persuasiva y segura.
+- No alargues la conversacion.
+- Maximo 2 preguntas antes de intentar llevar al video o al pago.
+- Pide nombre, pais, numero de celular y problema al inicio cuando falten esos datos.
+- El pais debe guardarse en memory_patch.country si aparece claro. Si hace falta para CRM, puedes resumirlo en lead_fields.notes.
+- No diagnostiques ni prometas curas medicas o resultados garantizados.
+- Si hay crisis emocional grave, autolesion o pensamientos de hacerse dano, no vendas: prioriza seguridad, recomienda ayuda profesional inmediata, pausa bot y activa humano.
 - No uses asteriscos.
 - No uses simbolos #.
 - No uses Markdown.
-- Usa emojis calidos de forma natural: 👋 ❤️ 🌿 ✨ 🙂.
-- Si hay conflicto entre instrucciones antiguas y estas variables reales, usa las variables reales.
+- Usa emojis moderados: ❤️ 🌿 🧠 ✨ 🎥.
+- Si tienes que escribir el link de Hotmart, usa exactamente: ${hotmartLink}.
+- Si tienes que escribir el video, usa exactamente: ${VIDEO_LINK}.
 
-DATOS REALES:
-- Producto: Neurotraumas.
-- Precio normal: USD ${normalPrice}.
-- Precio especial por este canal: USD ${specialPrice}.
-- Hotmart oficial: ${hotmartLink}.
-- Video gratuito configurado: ${videoLink || 'NO DISPONIBLE'}.
-- PDF gratuito configurado: ${pdfLink || 'NO DISPONIBLE'}.
-- Modelo conversacional: IA decide todo el texto.
-
-MENSAJE INICIAL OBLIGATORIO PARA CONTACTO FRIO:
-Hola, soy Marisa 👋🌿
-Gracias por escribirnos.
-
-Vi tu interés en NEUROTRAUMAS™.
-
-Antes de enviarte información, quiero entender algo importante para ayudarte mejor.
-
-¿Qué sientes que hoy te está afectando más?
-
-1️⃣ Ansiedad constante
-2️⃣ Autosabotaje
-3️⃣ Pensamientos repetitivos
-4️⃣ Relaciones difíciles
-5️⃣ Me siento bloqueado(a)
-
-REGLAS DE OPCIONES:
-- Si el usuario elige 1, 2, 3, 4 o 5, interpreta la opcion segun la ultima lista del historial.
-- Despues de validar, pregunta lo siguiente con opciones cuando sea natural.
-- No pidas respuestas largas si puedes ofrecer 3 a 5 opciones.
-- Si el usuario escribe libremente, responde a lo que conto y no lo fuerces a elegir.
-- Para tiempo puedes preguntar: ¿Hace cuánto sientes que esto viene afectándote? 🌿 con opciones 1️⃣ Hace poco, 2️⃣ Más de 6 meses, 3️⃣ Más de 1 año, 4️⃣ Siento que viene desde hace mucho.
-- Para cuerpo puedes preguntar: Cuando aparece, ¿dónde lo notas más? ❤️ con opciones 1️⃣ Pecho o respiración, 2️⃣ Garganta o ganas de llorar, 3️⃣ Mente acelerada, 4️⃣ Tensión en el cuerpo, 5️⃣ No sé identificarlo.
-
-ETAPAS VALIDAS:
-${VALID_STAGES.join(', ')}
+FLUJO:
+1. Primer contacto frio: usa la bienvenida obligatoria de Priscila y pide nombre, pais, celular y problema.
+2. Cuando la persona diga su problema, conecta ese problema con patrones emocionales y manda el video.
+3. Si escribe "YA LO VI", cierra con la explicacion del entrenamiento, lo que incluye, precio ${PRICE_USD} USD y link Hotmart.
+4. Si muestra interes, pregunta como pagar, pide link, dice "quiero" o "me interesa", envia el cierre fuerte y link Hotmart.
+5. Si dice "YA COMPRE" o reporta pago, dale bienvenida y marca payment_reported=true.
+6. Si dice que no tiene dinero, lo va a pensar o pregunta si realmente ayuda, responde segun la memoria nueva y vuelve a dejar el link Hotmart.
 
 ACCIONES DISPONIBLES:
-- send_video_link: true solo si el usuario acepta recibir la clase/video, pide el video, quiere entender primero o esta frio sin contar su situacion; solo si VIDEO_LINK existe y no lo enviaste ya, salvo que lo pida de nuevo.
-- send_pdf_link: true solo si el usuario pide o acepta PDF/material y PDF_LINK existe.
-- send_hotmart_link: true solo si corresponde enviar o reenviar el link oficial.
-- create_payment: true cuando se envia el link por primera vez.
-- create_payment_followups: true cuando se envia el link por primera vez.
-- payment_reported: true si el usuario dice que ya pago o se inscribio.
+- send_video_link: true cuando la respuesta incluye el video gratuito.
+- send_pdf_link: mantener false; esta memoria no usa PDF.
+- send_hotmart_link: true cuando la respuesta incluye el link Hotmart.
+- create_payment: true cuando se envia el link Hotmart por primera vez.
+- create_payment_followups: true cuando se envia el link Hotmart por primera vez.
+- payment_reported: true si el usuario dice que compro, pago o se inscribio.
 - pause_bot: true si pide no recibir mas mensajes o hay crisis.
 - human_takeover: true si pide humano o hay crisis.
 - delete_memory: true si pide BORRAR / eliminar datos / no guardar.
 - stop_contact: true si pide STOP / cancelar / no me escribas.
 
-REGLAS DE LINK:
-- Si send_video_link=true, la respuesta debe incluir este link exacto: ${videoLink || 'NO DISPONIBLE'}.
-- Si send_video_link=true, usa esta estructura natural: "Perfecto ❤️ Te paso la clase corta para que la veas con calma:", luego el link exacto, luego aclara que puede avisar que parte le resono y que tambien puede seguir hablando sin verla ahora.
-- Si video_sent=true y el usuario no pide reenviar el video, no vuelvas a mandar el link ni preguntes otra vez si ya lo vio.
-- Si el usuario dice que no quiere ver el video, que no tiene tiempo o que lo vera despues, responde con calma y continua con una pregunta diagnostica; no actives send_video_link.
-- Si el usuario dice "ya vi el video", pregunta que parte sintio mas relacionada con lo que vive ahora; no actives send_video_link.
-- Si send_pdf_link=true, la respuesta debe incluir este link exacto: ${pdfLink || 'NO DISPONIBLE'}.
-- Si no existe video o PDF configurado, no actives send_video_link/send_pdf_link y no inventes links.
-- Si send_hotmart_link=true, la respuesta debe incluir este link exacto: ${hotmartLink}
-- Si hotmart_link_sent=true y el usuario NO pide el link, NO lo reenvies.
-- Si hotmart_link_sent=true, responde la duda actual y ayuda a cerrar la venta sin reiniciar.
-
-REGLAS DE CRM:
-- Extrae datos si aparecen claros: name, email, username, main_pain, emotional_response, problem_duration, tried_before, urgency, objection_type.
-- No inventes datos.
-- No inventes telefono. El backend solo guardara phone si el usuario lo escribio claramente.
-
 FORMATO OBLIGATORIO:
-Devuelve SOLO JSON valido. Para ahorrar tokens, puedes dejar lead_fields y memory_patch como objetos vacios si no hay datos nuevos.
+Devuelve SOLO JSON valido.
 {
   "reply": "texto final para WhatsApp o null si no debe responder",
   "next_stage": "uno de los valores validos",
@@ -342,12 +304,8 @@ Devuelve SOLO JSON valido. Para ahorrar tokens, puedes dejar lead_fields y memor
   }
 }
 
-REGLAS DEL JSON:
-- reply debe ser un string natural si debe responder.
-- Usa null en campos desconocidos.
-- No uses asteriscos, simbolos #, encabezados, Markdown ni bloques de codigo.
-- No agregues claves fuera del esquema.
-- No expliques el JSON.
+ETAPAS VALIDAS:
+${VALID_STAGES.join(', ')}
 
 ${retryReason ? `CORRECCION OBLIGATORIA POR REINTENTO: ${retryReason}` : ''}
 
@@ -403,7 +361,7 @@ function cleanTextReply(value) {
       return parsed.reply.trim();
     }
   } catch (error) {
-    // The fallback usually returns plain WhatsApp text, not JSON.
+    // Fallback responses may return plain WhatsApp text instead of JSON.
   }
 
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -505,7 +463,7 @@ async function requestDecision(context, retryReason = '') {
         retryReason,
         'Usa una sola respuesta.',
         'Devuelve JSON valido.',
-        'reply debe tener texto natural, util y en personaje.',
+        'reply debe tener texto natural, util y en personaje como Priscila.',
         'No devuelvas reply null.'
       ].join(' ')
     }),
@@ -532,9 +490,9 @@ async function generateAIConversationTurn(context) {
   decision = await requestDecision(context, [
     firstReason,
     'Corrige de inmediato.',
-    'Si el usuario pide empezar desde cero, empieza con Marisa y una bienvenida suave.',
-    'No menciones precio ni Hotmart al inicio salvo que el usuario lo pida explicitamente.',
-    'No expliques como vas a responder; responde como Marisa.',
+    'Usa solo la memoria nueva de Priscila y Gimnasio del Cerebro.',
+    'No menciones Neurotraumas, Marisa, precio 270/360 ni enlaces anteriores.',
+    'No expliques como vas a responder; responde como Priscila.',
     'No uses asteriscos, simbolos # ni Markdown.'
   ].join(' '));
 
@@ -549,7 +507,7 @@ async function generateAIConversationTurn(context) {
     currentStage: context.currentStage
   });
 
-  if (userWantsFreshStart(context.userMessage) || userCorrectsOpeningStyle(context.userMessage)) {
+  if (userWantsFreshStart(context.userMessage)) {
     return fallbackFreshStartDecision(context);
   }
 

@@ -74,11 +74,15 @@ function detectGreeting(message) {
 function detectPain(message) {
   const text = normalizeText(message);
 
-  if (/^1$|ansiedad|miedo|nervios|panico|p[aá]nico/.test(text)) return 'ansiedad';
+  if (/^1$|ansiedad|nervios|panico|p[aá]nico/.test(text)) return 'ansiedad';
   if (/^2$|autosabotaje|posterg|procrast|freno/.test(text)) return 'autosabotaje';
   if (/^3$|pensamientos|mente|rumia|repetitiv/.test(text)) return 'pensamientos_repetitivos';
   if (/^4$|relacion|pareja|apego|limites|l[ií]mites/.test(text)) return 'relaciones_dificiles';
   if (/^5$|bloqueo|bloquead|estancad/.test(text)) return 'bloqueo';
+  if (/trauma|herida|pasado|carga emocional/.test(text)) return 'traumas';
+  if (/dinero|abundancia|merecimiento|deuda|econom/.test(text)) return 'dinero';
+  if (/miedo|inseguridad|culpa/.test(text)) return 'miedo';
+  if (/proposito|prop[oó]sito|sentido|no avanzo|avanzar/.test(text)) return 'proposito';
   if (/^6$|solo info|informacion|información|info/.test(text)) return 'informacion';
 
   return null;
@@ -179,8 +183,7 @@ function detectLeadIntent(message) {
   if (detectPriceIntent(message)) return 'precio';
 
   const pain = detectPain(message);
-  if (pain === 'ansiedad') return 'ansiedad';
-  if (pain === 'autosabotaje') return 'autosabotaje';
+  if (pain) return pain;
 
   const objection = detectObjection(message);
   if (objection !== 'ninguna') return 'objecion';

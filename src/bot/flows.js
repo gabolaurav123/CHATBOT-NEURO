@@ -1,274 +1,222 @@
+const BOT_NAME = 'Priscila';
+const PRODUCT_NAME = 'Gimnasio del Cerebro';
+const VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
+const PRICE_USD = '72';
+const HOTMART_PLACEHOLDER = '(LINK HOTMART)';
+const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+
 function withName(lead, fallback = '') {
   return lead && lead.name ? lead.name : fallback;
 }
 
+function cleanSetting(value, fallback, legacyValues = []) {
+  const text = value === undefined || value === null ? '' : String(value).trim();
+  if (!text || legacyValues.includes(text)) return fallback;
+  return text;
+}
+
 function prices(settings = {}) {
   return {
-    normal: settings.product_normal_price || '360',
-    special: settings.product_special_price || settings.product_price || '270'
+    normal: cleanSetting(settings.product_normal_price, PRICE_USD, ['360']),
+    special: cleanSetting(settings.product_special_price || settings.product_price, PRICE_USD, ['270'])
   };
 }
 
 function hotmartLink(settings = {}) {
-  return settings.hotmart_link || 'https://pay.hotmart.com/T103515864E';
+  return cleanSetting(settings.hotmart_link, HOTMART_PLACEHOLDER, [LEGACY_HOTMART_LINK]);
 }
 
 function videoLink(settings = {}) {
-  return settings.video_link || '';
+  return cleanSetting(settings.video_link, VIDEO_LINK);
 }
 
 function pdfLink(settings = {}) {
   return settings.pdf_link || '';
 }
 
-function firstMessage(settings = {}, lead = null) {
-  const name = withName(lead);
-  return `Hola${name ? ` ${name}` : ''} 👋 Qué bueno que estés acá.
+function firstMessage() {
+  return `Hola, soy ${BOT_NAME}, asistente del ${PRODUCT_NAME} 🌿🧠
 
-Soy Marisa. Desde el 2014 acompaño a personas a entender sus heridas emocionales, liberar cargas internas y recuperar más calma en su mente y en su cuerpo.
+Gracias por estar aqui.
 
-Para empezar de una forma simple, quiero regalarte una clase corta de 12 minutos donde te explico cómo funciona el cerebro cuando se activa una herida emocional o un trauma.
+Si llegaste hasta este espacio, probablemente hay algo en tu vida que ya no queres seguir repitiendo.
 
-Voy a recordar esta conversación durante 24 horas para no repetirte lo mismo. Si prefieres borrar esa memoria temporal, escribí BORRAR.
+Puede ser ansiedad, miedos, bloqueos, relaciones dificiles, problemas con el dinero, traumas emocionales o una sensacion de no avanzar.
 
-¿Querés que te envíe el video ahora?`;
+Y quiero decirte algo importante:
+
+✨ No estas roto.
+✨ No te falta fuerza de voluntad.
+✨ Muchas veces el problema esta en patrones emocionales que funcionan en automatico.
+
+Para orientarte mejor, respondeme esto:
+
+1️⃣ Cual es tu nombre?
+2️⃣ De que pais sos?
+3️⃣ Cual es tu numero de celular?
+4️⃣ Que problema te gustaria transformar primero?`;
 }
 
 function greetingMessage(settings = {}, lead = null) {
   return firstMessage(settings, lead);
 }
 
-function infoWelcomeMessage(settings = {}, lead = null) {
-  const name = withName(lead);
-  return `Claro${name ? `, ${name}` : ''} ❤️ Te cuento.
-
-Neurotraumas es un proceso de 12 semanas para aprender a identificar y empezar a desactivar heridas emocionales o reacciones internas que se repiten, como miedo, ansiedad, bloqueo, culpa, apego, rechazo o sensación de no poder avanzar.
-
-Antes de hablarte del programa, me gusta regalar una clase corta de 12 minutos para que entiendas cómo funciona esto en el cerebro y en el cuerpo.
-
-¿Querés que te la envíe?`;
+function infoWelcomeMessage() {
+  return firstMessage();
 }
 
 function problemWelcomeMessage() {
-  return `Gracias por escribirme y contarme eso ❤️
+  return `Entiendo ❤️
 
-Lo que describís puede sentirse muy agotador, sobre todo cuando la mente intenta estar bien pero el cuerpo reacciona con miedo, tensión, ansiedad o bloqueo.
+Eso que contas puede estar conectado con patrones emocionales que se repiten en automatico.
 
-Antes de hablarte del programa, quiero regalarte una clase corta de 12 minutos para que entiendas por qué el cuerpo puede seguir reaccionando a experiencias que no terminó de procesar.
+En el ${PRODUCT_NAME} trabajamos con herramientas para empezar a mirar eso desde la raiz y reconfigurar tu mundo interno.
 
-¿Querés que te la envíe?`;
+Si queres cambiar radicalmente tu vida, primero mira este video:
+
+🎥 ${VIDEO_LINK}
+
+Cuando lo termines, escribime "YA LO VI" y te explico como entrar al entrenamiento.`;
 }
 
 function videoSentMessage(settings = {}) {
-  const link = videoLink(settings);
+  return `Perfecto ❤️
 
-  if (!link) {
-    return `Perfecto ❤️ Vamos paso a paso.
+Mira este video para entender como funciona el metodo:
 
-Para conocerte mejor, te hago dos preguntitas:
+🎥 ${videoLink(settings)}
 
-1. ¿Esto que te pasa viene desde hace mucho tiempo o empezó hace poco?
-2. Cuando aparece, ¿lo sentís fuerte en el cuerpo? Por ejemplo: taquicardia, presión en el pecho, nudo en la garganta, tensión, bloqueo, ganas de llorar o miedo.`;
-  }
-
-  return `Perfecto, te lo dejo acá 🎁
-
-Video gratuito:
-${link}
-
-Miralo tranquila cuando puedas. No hace falta que lo veas perfecto ni que entiendas todo de una vez.
-
-Cuando termines, contame qué parte te resonó o si sentiste que algo se parece a lo que te pasa.`;
+Cuando lo termines, escribime "YA LO VI" y te explico como entrar al entrenamiento.`;
 }
 
 function videoDeclinedMessage() {
-  return `Está bien, lo respeto totalmente 🌿
+  return `Te entiendo ❤️
 
-Si en otro momento querés entender por qué ciertas emociones, miedos o reacciones del cuerpo se repiten, podés escribirme por acá y te lo envío sin problema.
+No quiero presionarte.
 
-Te mando un abrazo.`;
+Solo te invito a preguntarte si esto que venis repitiendo merece seguir igual o si ya es momento de mirarlo desde otro lugar.`;
 }
 
 function videoWaitingMessage() {
   return `Perfecto ❤️ Miralo con calma.
 
-Y cuando lo termines, contame si hubo alguna parte que te hizo sentido o si conectó con algo que venís viviendo.
-
-Cuando lo termines, contame que parte te hizo sentido.`;
+Cuando lo termines, escribime "YA LO VI" y te explico como entrar al entrenamiento.`;
 }
 
 function diagnosticIntroMessage() {
-  return `Gracias por verlo ❤️
-
-Me alegra que te haya hecho sentido. Ahora quiero conocerte un poquito mejor para poder orientarte con más cuidado.
-
-Te hago dos preguntitas rápidas:
-
-1. ¿Esto que te pasa viene desde hace mucho tiempo o empezó hace poco?
-2. Cuando aparece, ¿lo sentís fuerte en el cuerpo? Por ejemplo: taquicardia, presión en el pecho, nudo en la garganta, tensión, bloqueo, ganas de llorar o miedo.
-
-Contame como puedas, no hace falta explicarlo perfecto.`;
+  return problemWelcomeMessage();
 }
 
 function directPainDiagnosticMessage() {
-  return `Gracias por contarme eso ❤️
-
-Lo que decís es importante, porque muchas veces el cuerpo expresa algo que la mente todavía no pudo ordenar. Puede aparecer como ansiedad, miedo, presión en el pecho, ganas de llorar, bloqueo o una reacción que se repite aunque una parte tuya no quiera.
-
-Para orientarte mejor, te hago dos preguntitas:
-
-1. ¿Esto viene desde hace mucho tiempo o empezó hace poco?
-2. Cuando te pasa, ¿sentís una reacción fuerte en el cuerpo?
-
-Con eso puedo decirte mejor por dónde puede venir.`;
+  return problemWelcomeMessage();
 }
 
 function diagnosticLongMessage() {
-  return `Gracias por abrirte y contármelo ❤️
+  return `Lo que contas puede sentirse muy agotador ❤️
 
-Por lo que me decís, suena a que tu cuerpo aprendió una forma de reaccionar para protegerte. A veces, cuando vivimos algo intenso, doloroso o repetido, el cerebro guarda esa experiencia como una alerta.
+Muchas veces no se trata de falta de voluntad, sino de patrones emocionales funcionando en automatico.
 
-Entonces, aunque hoy la situación sea diferente, el sistema nervioso puede activarse como si siguieras en peligro.
+El primer paso para entender como trabajarlo es mirar este video:
 
-No significa que estés mal ni que seas débil. Significa que hay una reacción interna que se puede comprender, trabajar y empezar a liberar.
+🎥 ${VIDEO_LINK}
 
-¿Tiene sentido esto con lo que venís sintiendo?`;
+Cuando lo termines, escribime "YA LO VI".`;
 }
 
 function diagnosticRecentMessage() {
-  return `Gracias por contármelo ❤️
-
-Si esto empezó hace poco, puede estar relacionado con una situación reciente que tu sistema nervioso todavía está intentando procesar. A veces una experiencia no necesita ser enorme para dejar una marca; basta con que haya sido intensa para vos.
-
-Lo importante es observar cómo responde tu cuerpo y qué situaciones activan esa reacción.
-
-¿Sentís que esto empezó después de algo específico?`;
+  return diagnosticLongMessage();
 }
 
 function diagnosticUnknownMessage() {
-  return `Está bien no saberlo. A muchas personas les pasa que sienten ansiedad, miedo, bloqueo o tristeza, pero no logran identificar exactamente de dónde viene.
+  return `Esta bien no tener todo claro todavia ❤️
 
-El primer paso no es tener todas las respuestas, sino aprender a observar cómo reacciona tu cuerpo y en qué momentos se activa.
+Justamente el entrenamiento te ayuda a observar patrones, emociones y cargas que quizas venis repitiendo sin darte cuenta.
 
-Eso ya empieza a darte claridad.
+Mira este video primero:
 
-¿Querés que te ayude a identificar qué tipo de situación suele activarlo más?`;
+🎥 ${VIDEO_LINK}
+
+Cuando lo termines, escribime "YA LO VI".`;
 }
 
 function pdfOfferMessage() {
-  return `Me alegra que te haga sentido 🌿
+  return `En esta memoria no usamos PDF.
 
-Para ayudarte a entenderlo mejor, te preparé un PDF corto y práctico con información clara sobre cómo se activan estas memorias emocionales y qué podés empezar a observar en vos desde hoy.
+El primer paso es mirar el video gratuito:
 
-No es algo pesado ni complicado. Es una guía simple para que puedas empezar a mirar tu caso con más claridad.
-
-¿Querés que te lo envíe?`;
+🎥 ${VIDEO_LINK}`;
 }
 
 function pdfSentMessage(settings = {}) {
   const link = pdfLink(settings);
-
-  if (!link) {
-    return `Claro ❤️
-
-Lo importante ahora es que empieces a reconocer cómo reacciona tu cuerpo y qué situaciones activan esa respuesta.
-
-¿Querés que te cuente cómo funciona el programa Neurotraumas?`;
-  }
-
-  return `Claro, te lo dejo acá ❤️
-
-PDF gratuito:
-${link}
-
-Leelo con calma. Lo importante no es que entiendas todo perfecto, sino que empieces a reconocer cómo reacciona tu cuerpo y qué situaciones activan esa respuesta.
-
-Cuando lo veas, contame qué parte sentiste más cercana a tu caso.`;
+  return link ? `Te dejo el material:\n\n${link}` : pdfOfferMessage();
 }
 
 function pdfWaitingMessage() {
-  return `Perfecto ❤️ Revisalo tranquila.
-
-Después de leerlo, fijate especialmente si identificás alguna reacción que se repite en vos: miedo, bloqueo, ansiedad, culpa, apego, rechazo, tensión o ganas de llorar.
-
-Cuando quieras, me contás qué parte sentiste más cercana a tu caso.`;
+  return videoWaitingMessage();
 }
 
 function programIntroMessage() {
-  return `Me alegra que estés tomando esto en serio ❤️
+  return `El entrenamiento del ${PRODUCT_NAME} esta disenado para ayudarte a trabajar bloqueos, heridas, miedos y patrones emocionales con una metodologia paso a paso.
 
-Cuando una reacción emocional se repite, normalmente no alcanza solo con entenderla. Hay que aprender a identificar cuándo se activa, qué la detona, cómo responde el cuerpo y cómo empezar a regularla desde la raíz.
-
-Justamente para eso existe Neurotraumas. Es un programa de 12 semanas donde te acompaño paso a paso a entender y trabajar esas reacciones internas que se activan automáticamente.
-
-¿Querés que te cuente cómo funciona el programa?`;
+Si ya viste el video, puedo pasarte el acceso para entrar.`;
 }
 
 function offerMessage(settings = {}, lead = null) {
   const name = withName(lead);
-  const product = settings.product_name || 'Neurotraumas';
-  const { normal, special } = prices(settings);
+  const { special } = prices(settings);
+  const link = hotmartLink(settings);
 
-  return `Me alegra mucho que hayas llegado hasta acá${name ? `, ${name}` : ''} ❤️
+  return `Perfecto${name ? `, ${name}` : ''} ❤️
 
-${product} es un programa de 12 semanas diseñado para ayudarte a identificar, comprender y empezar a desactivar esas reacciones emocionales que se activan automáticamente en tu mente y en tu cuerpo.
+El entrenamiento del ${PRODUCT_NAME} incluye:
 
-No es solo teoría. Es un proceso práctico para que puedas entender qué pasa dentro de vos, reconocer tus patrones y aplicar herramientas concretas para recuperar más calma y control interno.
+✔️ 45 clases
+✔️ Material descargable
+✔️ Reloj Emocional
+✔️ Rueda del Alma
+✔️ Tarjetas Holograficas
+✔️ Herramientas practicas
+✔️ Acceso de por vida
+✔️ Aplicacion inmediata
 
-El valor normal es de $${normal} USD, pero por este canal tenés un precio especial de $${special} USD.
+La inversion es de ${special} USD.
 
-Incluye:
+Si sentis que ya es momento de sacar esos patrones y cambiar tu vida desde adentro, podes entrar aqui:
 
-✅ 12 semanas de entrenamiento
-✅ Clases en vivo
-✅ Acceso de por vida en Hotmart
-✅ Grupo privado de acompañamiento
-✅ Material práctico y ejercicios
-✅ 2 lives grupales de seguimiento
-✅ Certificado
-✅ Actualizaciones
-✅ Garantía de 14 días
-
-La idea es que no atravieses esto sola, sino con una estructura clara y acompañamiento.
-
-¿Querés que te pase el link de Hotmart para verlo con calma?`;
+${link}`;
 }
 
 function priceOnlyMessage(settings = {}) {
-  const { normal, special } = prices(settings);
-  return `Claro. El programa Neurotraumas tiene un valor normal de $${normal} USD, pero por este canal está con precio especial de $${special} USD.
+  const { special } = prices(settings);
+  return `La inversion es de ${special} USD ❤️
 
-Incluye 12 semanas de entrenamiento, clases en vivo, acceso de por vida, grupo privado, materiales, lives de seguimiento, certificado, actualizaciones y garantía de 14 días.
+Incluye acceso de por vida a las clases, materiales y herramientas.
 
-Si querés, también puedo pasarte el link para que veas todo con detalle en Hotmart.`;
+No es un pago temporal ni algo que se vence.
+
+Podes volver al contenido cada vez que lo necesites.
+
+Aqui tenes el acceso:
+
+${hotmartLink(settings)}`;
 }
 
 function summaryMessage(settings = {}) {
   const { special } = prices(settings);
-  return `Claro. Te lo resumo simple:
+  return `El ${PRODUCT_NAME} es un entrenamiento para trabajar bloqueos, heridas, miedos y patrones emocionales desde una metodologia paso a paso.
 
-Neurotraumas es un programa de 12 semanas para aprender a identificar y empezar a desactivar heridas emocionales o traumas que se activan automáticamente en tu cuerpo y en tu mente.
+Incluye clases, materiales, herramientas practicas y acceso de por vida.
 
-Incluye clases, ejercicios, grupo privado, seguimiento, acceso de por vida y garantía de 14 días.
-
-El precio especial por este canal es de $${special} USD.`;
+La inversion es de ${special} USD.`;
 }
 
 function freeMaterialsMessage(settings = {}) {
-  const video = videoLink(settings);
-  const pdf = pdfLink(settings);
+  return `El primer paso gratuito es mirar este video:
 
-  if (!video && !pdf) {
-    return `Claro, podés empezar con material gratuito sin problema ❤️
+🎥 ${videoLink(settings)}
 
-Podemos empezar simple: ¿lo que más te pesa ahora es ansiedad, miedo, tristeza, culpa o sentir que no podés soltar algo?`;
-  }
-
-  return `Claro, podés empezar con el material gratuito sin problema ❤️
-
-Te recomiendo ver primero el video de 12 minutos y luego revisar el PDF. Eso ya te va a dar claridad sobre cómo se activan ciertas heridas emocionales y por qué el cuerpo puede reaccionar con ansiedad, miedo o bloqueo.
-
-${video ? `Video:\n${video}\n\n` : ''}${pdf ? `PDF:\n${pdf}` : ''}`.trim();
+Cuando lo termines, escribime "YA LO VI" y te explico como entrar al entrenamiento.`;
 }
 
 function hotmartMessage(lead = null, linkValue = null, settings = {}) {
@@ -276,111 +224,124 @@ function hotmartMessage(lead = null, linkValue = null, settings = {}) {
   const link = linkValue || hotmartLink(settings);
   const { special } = prices(settings);
 
-  return `Claro${name ? `, ${name}` : ''} ❤️ Te dejo el link seguro de Hotmart para que puedas ver toda la información y hacer tu inscripción:
+  return `Me alegra mucho que lo sientas asi${name ? `, ${name}` : ''} ❤️
+
+Este puede ser el primer paso para dejar de repetir lo mismo y empezar a trabajar en vos desde otro lugar.
+
+No estas comprando solo un curso.
+
+Estas tomando una decision para cambiar tu relacion con tus emociones, tus patrones y tu historia.
+
+La inversion es de ${special} USD y el acceso es de por vida.
+
+Entras desde aqui:
 
 ${link}
 
-Recordá que por este canal tenés el precio especial de $${special} USD y garantía de 14 días.
-
-Cuando entres, si te surge alguna duda sobre el pago, el acceso o el contenido, escribime por acá y te ayudo.`;
+Cuando hagas la compra, escribime "YA COMPRE" y te doy la bienvenida.`;
 }
 
 const objectionReplies = {
-  precio: `Te entiendo ❤️ Es una inversión importante, y está bien mirarlo con cuidado.
+  precio: `Te entiendo ❤️
 
-No quiero que lo tomes desde presión. Más que verlo solo como un gasto, pensalo como una decisión sobre algo que lleva tiempo afectándote.
+Y no quiero que decidas desde presion.
 
-También tenés garantía de 14 días, para entrar, revisar el contenido y sentir si realmente conecta con vos.
+Pero si te invito a preguntarte algo:
 
-¿Querés que te explique exactamente qué incluye para que puedas decidir con más claridad?`,
+Cuanto te esta costando seguir con el mismo problema?
 
-  tiempo: `Te entiendo. Muchas personas llegan sintiendo que no tienen tiempo ni energía.
+A veces el costo de no trabajar nuestros patrones termina siendo mas alto que la inversion.
 
-Por eso Neurotraumas está pensado para avanzar paso a paso, sin saturarte. La idea no es exigirte más, sino darte una estructura para empezar a comprender y regular lo que se activa en vos.
+El entrenamiento cuesta ${PRICE_USD} USD y tenes acceso de por vida.`,
 
-¿Tu preocupación es más por horarios, constancia o energía emocional?`,
+  tiempo: `Te entiendo ❤️
 
-  confianza: `Es normal tener dudas.
+No se trata de hacerlo perfecto, sino de empezar a mirar lo que venis repitiendo desde otro lugar.
 
-Nadie debería tomar una decisión importante solo por impulso. Neurotraumas no se basa en prometer resultados mágicos, sino en ayudarte a comprender tus patrones, trabajar con herramientas prácticas y acompañarte durante 12 semanas.
+El acceso es de por vida, asi que podes avanzar a tu ritmo.`,
 
-Además, el pago se hace por Hotmart y tenés garantía de 14 días.
+  confianza: `Es normal querer estar segura ❤️
 
-¿Querés que te explique cómo funciona el acceso después del pago?`,
+El entrenamiento no es magia ni una promesa vacia.
 
-  indecision: `Claro, está bien pensarlo con calma 🌿
+Es una metodologia con herramientas para identificar patrones, mirar heridas emocionales y trabajar en una reconfiguracion interna.`,
 
-No quiero que compres desde presión. Solo te dejo una pregunta para mirarlo con honestidad:
+  indecision: `Claro ❤️ Pensarlo esta bien.
 
-¿Lo querés pensar porque necesitás revisar algo concreto, o porque una parte tuya tiene miedo de empezar?`
+Solo te diria algo:
+
+No lo pienses desde el miedo.
+Pensalo desde la vida que queres construir.`
 };
 
 function crisisMessage() {
-  return `Siento mucho que estés pasando por esto. Lo más importante ahora es tu seguridad.
+  return `Siento mucho que estes pasando por esto ❤️
 
-Por favor, no te quedes sola con esto: buscá a una persona de confianza ahora mismo o comunicate con emergencias o una línea de ayuda de tu país.
+En este momento lo mas importante es que no estes sol@.
 
-Si sentís que podés hacerte daño o estás en peligro inmediato, llamá a emergencias en este momento.
+Por favor busca ayuda profesional inmediata o comunicate con una linea de emergencia de tu pais.
 
-Yo puedo acompañarte con palabras, pero en una situación así necesitás apoyo humano directo y urgente.`;
+Este entrenamiento puede acompanar procesos personales, pero no reemplaza atencion psicologica, medica o terapeutica en una situacion urgente.
+
+Ahora lo mas importante es tu seguridad.`;
 }
 
 function deleteMemoryMessage() {
-  return `Entiendo. Voy a eliminar la memoria temporal de esta conversación.
-
-Solo mantendremos el registro básico necesario para no volver a contactarte si no lo deseas.`;
+  return `Entiendo. Voy a eliminar la memoria temporal de esta conversacion.`;
 }
 
 function stopMessage() {
-  return `Está bien, lo respeto totalmente.
+  return `Esta bien, lo respeto totalmente.
 
 Gracias por haber escrito y te deseo mucha calma en tu proceso 🌿`;
 }
 
 function humanTakeoverMessage() {
-  return `Claro. Voy a dejar esta conversación para que una persona del equipo pueda ayudarte directamente.`;
+  return `Claro. Voy a dejar esta conversacion para que una persona del equipo pueda ayudarte directamente.`;
 }
 
 function botIdentityMessage() {
-  return `Soy el asistente virtual del equipo de Marisa, pero estoy acá para orientarte con mucho cuidado y ayudarte a resolver tus dudas.`;
+  return `Soy ${BOT_NAME}, asistente del ${PRODUCT_NAME}. Estoy aca para orientarte con cuidado y ayudarte a resolver tus dudas.`;
 }
 
 function softCloseMessage() {
   return `Perfecto ❤️ Revisalo con calma.
 
-No tenés que decidir desde la presión. Si te surge alguna duda sobre el contenido, el acceso o el pago, me escribís por acá y te ayudo.`;
+Si te surge alguna duda sobre el acceso, el pago o el contenido, escribime por aca y te ayudo.`;
 }
 
 function farewellMessage() {
-  return `Perfecto ❤️ Gracias por escribirme.
+  return `Gracias por escribir ❤️
 
-Revisalo con calma y, si en otro momento querés retomar o te surge alguna duda, podés escribirme por acá.
-
-Te mando un abrazo.`;
+Cuando sientas que es tu momento, podes retomar por aca.`;
 }
 
 function unclearMessage() {
-  return `Te entiendo. A veces cuesta poner en palabras lo que uno siente.
+  return `Te entiendo ❤️
 
-Podemos ir simple: ¿lo que más te pesa ahora es ansiedad, miedo, tristeza, culpa o sentir que no podés soltar algo?`;
+Para orientarte mejor, decime que es lo que mas queres cambiar ahora mismo: ansiedad, miedo, dinero, relaciones, traumas, bloqueo o proposito?`;
 }
 
 function postLinkFallback(lead = null) {
   const name = withName(lead);
   return `Perfecto${name ? `, ${name}` : ''} ❤️
 
-Revisalo tranquila. Si al entrar te surge alguna duda sobre el pago, el acceso o el contenido, me escribís por acá y te ayudo.`;
+Revisalo con calma. Si te surge alguna duda sobre el pago, el acceso o el contenido, escribime por aca y te ayudo.`;
 }
 
 function paymentReportedMessage(lead = null) {
   const name = withName(lead);
-  return `Excelente${name ? `, ${name}` : ''} 🙌
+  return `Bienvenid@${name ? `, ${name}` : ''}!! 🧠✨
 
-Me alegra mucho que hayas tomado la decisión de empezar.
+Acabas de tomar una decision muy importante.
 
-Para ayudarte con el acceso, por favor envíame la confirmación de Hotmart o el correo/comprobante de inscripción.
+No compraste solo un curso.
 
-Luego te guiaremos con los siguientes pasos.`;
+Elegiste empezar a trabajar en vos, en tus patrones, en tus emociones y en todo eso que queres transformar.
+
+Estoy feliz de acompanarte en este camino.
+
+🌿 Nos vemos dentro.`;
 }
 
 const painReplies = {
@@ -397,36 +358,35 @@ function diagnosticQuestion1() {
 }
 
 function diagnosticQuestion2() {
-  return `¿Hace cuánto sentís que esto viene afectándote: empezó hace poco, hace más de un año o viene desde hace mucho tiempo?`;
+  return `Que problema queres transformar primero: ansiedad, miedo, dinero, relaciones, trauma, bloqueo o proposito?`;
 }
 
 function diagnosticQuestion3() {
-  return `¿Ya intentaste algo para trabajarlo, como terapia, cursos, meditación o alguna herramienta emocional?`;
+  return `Ya intentaste trabajarlo antes o seria la primera vez que lo miras desde este enfoque?`;
 }
 
 function diagnosticQuestion4() {
-  return `Del 1 al 10, ¿qué tan urgente es para vos empezar a cambiar esto?`;
+  return `Del 1 al 10, que tan importante es para vos empezar a cambiar esto ahora?`;
 }
 
 function askName() {
-  return `Para orientarte mejor, ¿me decís tu nombre?`;
+  return `Para orientarte mejor, cual es tu nombre?`;
 }
 
-function askEmail(lead) {
-  const name = withName(lead);
-  return `Perfecto${name ? `, ${name}` : ''}. ¿A qué correo te puedo enviar la información si querés revisarla con calma?`;
+function askEmail() {
+  return `Si queres, tambien podes dejarme tu correo para registrar mejor tu interes.`;
 }
 
 function askEmailAgain() {
-  return `Creo que ese correo no quedó bien escrito. ¿Me lo podés enviar nuevamente?`;
+  return `Creo que ese correo no quedo bien escrito. Me lo podes enviar nuevamente?`;
 }
 
 function askUsername() {
-  return `¿Y por qué red llegaste o cuál es tu usuario? Puede ser Instagram, Facebook, TikTok o WhatsApp.`;
+  return `Por que red llegaste o cual es tu usuario? Puede ser Instagram, Facebook, TikTok o WhatsApp.`;
 }
 
 function askPhone() {
-  return `Para dejar tu registro completo y poder darte seguimiento si se corta la conversación, ¿me compartís tu número de WhatsApp con código de país?`;
+  return `Cual es tu numero de celular con codigo de pais?`;
 }
 
 module.exports = {

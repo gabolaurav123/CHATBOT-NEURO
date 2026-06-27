@@ -7,7 +7,10 @@ const ignored = new Set(['node_modules', '.git', '.baileys_auth']);
 const files = [];
 const blockedPromptFragments = [
   ['Eres el motor conversacional', 'de Neurotraumas para WhatsApp'].join(' '),
-  ['Debes responder a absolutamente todo', 'lo que la persona escriba'].join(' ')
+  ['Debes responder a absolutamente todo', 'lo que la persona escriba'].join(' '),
+  ['Hola, soy', 'Marisa'].join(' '),
+  ['Vi tu interés en', 'NEUROTRAUMAS'].join(' '),
+  ['Precio especial por este canal: USD', '270'].join(' ')
 ];
 
 function walk(dir) {

@@ -12,6 +12,14 @@ const { hotmartMessage } = require('../bot/flows');
 const { buildPaymentFollowUps } = require('../bot/followUps');
 
 const router = express.Router();
+const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+const HOTMART_PLACEHOLDER = '(LINK HOTMART)';
+
+function activeHotmartLink(settings = {}) {
+  const link = String(settings.hotmart_link || '').trim();
+  if (!link || link === LEGACY_HOTMART_LINK) return HOTMART_PLACEHOLDER;
+  return link;
+}
 
 function parseLeadId(req) {
   const id = req.params.id;
@@ -156,7 +164,7 @@ router.post('/:id/send-hotmart-link', async (req, res, next) => {
     const id = parseLeadId(req);
     let lead = await getLeadOr404(id);
     const settings = await settingsService.getRuntimeSettings();
-    const hotmartLink = settings.hotmart_link || 'https://pay.hotmart.com/T103515864E';
+    const hotmartLink = activeHotmartLink(settings);
     const message = hotmartMessage(lead, hotmartLink, settings);
     const recipient = getRecipientOrThrow(lead);
 
@@ -175,7 +183,7 @@ router.post('/:id/send-hotmart-link', async (req, res, next) => {
       leadId: lead.id,
       phone: lead.phone,
       paymentLink: hotmartLink,
-      amount: settings.product_special_price || settings.product_price,
+      amount: settings.product_special_price || settings.product_price || 72,
       metadata: { source: 'crm' }
     });
 

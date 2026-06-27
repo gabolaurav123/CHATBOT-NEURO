@@ -27,6 +27,9 @@ const STAGE_ALIASES = {
   closed: 'cierre_frio'
 };
 
+const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+const HOTMART_PLACEHOLDER = '(LINK HOTMART)';
+
 const ALLOWED_AI_LEAD_FIELDS = new Set([
   'name',
   'email',
@@ -79,13 +82,15 @@ function resolveCurrentStage({ lead, conversation, memory }) {
 }
 
 function getHotmartLink(settings = {}) {
-  return settings.hotmart_link || env.HOTMART_LINK || 'https://pay.hotmart.com/T103515864E';
+  const link = String(settings.hotmart_link || env.HOTMART_LINK || '').trim();
+  if (!link || link === LEGACY_HOTMART_LINK) return HOTMART_PLACEHOLDER;
+  return link;
 }
 
 function getAmount(settings = {}) {
-  const raw = settings.product_special_price || settings.product_price || env.PRODUCT_SPECIAL_PRICE || 270;
+  const raw = settings.product_special_price || settings.product_price || env.PRODUCT_SPECIAL_PRICE || 72;
   const amount = Number(String(raw).replace(/[^\d.]/g, ''));
-  return Number.isFinite(amount) && amount > 0 ? amount : 270;
+  return Number.isFinite(amount) && amount > 0 ? amount : 72;
 }
 
 function sanitizeLeadFields(aiFields = {}, lead, body) {
@@ -312,7 +317,7 @@ function isRecoverableBotControl(lead) {
 }
 
 function isRestartMessage(body) {
-  return /^(hola|buenas|buenos dias|buenas tardes|buenas noches|neuro|info|ayuda|inicio|empezar|reiniciar)$/i
+  return /^(hola|buenas|buenos dias|buenas tardes|buenas noches|gimnasio|cerebro|gimnasio del cerebro|info|ayuda|inicio|empezar|reiniciar)$/i
     .test(String(body || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim());
 }
 

@@ -1,6 +1,14 @@
 const { query } = require('../config/db');
 const { env } = require('../config/env');
 
+const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+
+function activeTextSetting(value, fallback, legacyValues = []) {
+  const text = value === undefined || value === null ? '' : String(value).trim();
+  if (!text || legacyValues.includes(text)) return fallback;
+  return text;
+}
+
 async function getSettings() {
   const result = await query('SELECT key, value, json_value FROM bot_settings ORDER BY key ASC');
   const settings = {};
@@ -47,13 +55,13 @@ async function getRuntimeSettings() {
   const settings = await getSettings();
 
   return {
-    product_name: settings.product_name || env.PRODUCT_NAME,
-    product_normal_price: settings.product_normal_price || String(env.PRODUCT_NORMAL_PRICE),
-    product_special_price: settings.product_special_price || settings.product_price || String(env.PRODUCT_SPECIAL_PRICE),
-    product_price: settings.product_special_price || settings.product_price || String(env.PRODUCT_PRICE),
-    video_link: settings.video_link || env.VIDEO_LINK,
+    product_name: activeTextSetting(settings.product_name, env.PRODUCT_NAME, ['Neurotraumas']),
+    product_normal_price: activeTextSetting(settings.product_normal_price, String(env.PRODUCT_NORMAL_PRICE), ['360']),
+    product_special_price: activeTextSetting(settings.product_special_price || settings.product_price, String(env.PRODUCT_SPECIAL_PRICE), ['270']),
+    product_price: activeTextSetting(settings.product_special_price || settings.product_price, String(env.PRODUCT_PRICE), ['270']),
+    video_link: activeTextSetting(settings.video_link, env.VIDEO_LINK),
     pdf_link: settings.pdf_link || env.PDF_LINK,
-    hotmart_link: settings.hotmart_link || env.HOTMART_LINK,
+    hotmart_link: activeTextSetting(settings.hotmart_link, env.HOTMART_LINK, [LEGACY_HOTMART_LINK]),
     openai_model: settings.openai_model || env.OPENAI_MODEL,
     openai_max_output_tokens: settings.openai_max_output_tokens || String(env.OPENAI_MAX_OUTPUT_TOKENS)
   };

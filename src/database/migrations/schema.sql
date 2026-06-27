@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS payments (
   phone TEXT,
   status TEXT DEFAULT 'pending',
   provider TEXT DEFAULT 'hotmart',
-  amount NUMERIC DEFAULT 270,
+  amount NUMERIC DEFAULT 72,
   currency TEXT DEFAULT 'USD',
   payment_link TEXT,
   reported_by_user BOOLEAN DEFAULT FALSE,
