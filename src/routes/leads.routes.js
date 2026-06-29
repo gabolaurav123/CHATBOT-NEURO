@@ -14,10 +14,18 @@ const { buildPaymentFollowUps } = require('../bot/followUps');
 const router = express.Router();
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
 const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/W101807995K';
+const HOTMART_PLACEHOLDERS = [
+  '(LINK HOTMART)',
+  '[LINK HOTMART]',
+  'LINK HOTMART',
+  '(HOTMART_LINK)',
+  '[HOTMART_LINK]',
+  'HOTMART_LINK'
+];
 
 function activeHotmartLink(settings = {}) {
   const link = String(settings.hotmart_link || '').trim();
-  if (!link || link === LEGACY_HOTMART_LINK) return HOTMART_PLACEHOLDER;
+  if (!link || link === LEGACY_HOTMART_LINK || HOTMART_PLACEHOLDERS.includes(link)) return HOTMART_PLACEHOLDER;
   return link;
 }
 

@@ -4,10 +4,18 @@ const { addHours, addDays } = require('../utils/date');
 const VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
 const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/W101807995K';
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+const HOTMART_PLACEHOLDERS = [
+  '(LINK HOTMART)',
+  '[LINK HOTMART]',
+  'LINK HOTMART',
+  '(HOTMART_LINK)',
+  '[HOTMART_LINK]',
+  'HOTMART_LINK'
+];
 
 function cleanHotmartLink(hotmartLink) {
   const link = String(hotmartLink || '').trim();
-  if (!link || link === LEGACY_HOTMART_LINK) return HOTMART_PLACEHOLDER;
+  if (!link || link === LEGACY_HOTMART_LINK || HOTMART_PLACEHOLDERS.includes(link)) return HOTMART_PLACEHOLDER;
   return link;
 }
 

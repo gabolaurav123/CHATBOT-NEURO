@@ -4,6 +4,14 @@ const VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
 const PRICE_USD = '72';
 const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/W101807995K';
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+const HOTMART_PLACEHOLDERS = [
+  '(LINK HOTMART)',
+  '[LINK HOTMART]',
+  'LINK HOTMART',
+  '(HOTMART_LINK)',
+  '[HOTMART_LINK]',
+  'HOTMART_LINK'
+];
 
 function withName(lead, fallback = '') {
   return lead && lead.name ? lead.name : fallback;
@@ -23,7 +31,7 @@ function prices(settings = {}) {
 }
 
 function hotmartLink(settings = {}) {
-  return cleanSetting(settings.hotmart_link, HOTMART_PLACEHOLDER, [LEGACY_HOTMART_LINK]);
+  return cleanSetting(settings.hotmart_link, HOTMART_PLACEHOLDER, [LEGACY_HOTMART_LINK, ...HOTMART_PLACEHOLDERS]);
 }
 
 function videoLink(settings = {}) {

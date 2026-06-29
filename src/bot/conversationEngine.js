@@ -29,6 +29,14 @@ const STAGE_ALIASES = {
 
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
 const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/W101807995K';
+const HOTMART_PLACEHOLDERS = [
+  '(LINK HOTMART)',
+  '[LINK HOTMART]',
+  'LINK HOTMART',
+  '(HOTMART_LINK)',
+  '[HOTMART_LINK]',
+  'HOTMART_LINK'
+];
 
 const ALLOWED_AI_LEAD_FIELDS = new Set([
   'name',
@@ -83,7 +91,7 @@ function resolveCurrentStage({ lead, conversation, memory }) {
 
 function getHotmartLink(settings = {}) {
   const link = String(settings.hotmart_link || env.HOTMART_LINK || '').trim();
-  if (!link || link === LEGACY_HOTMART_LINK) return HOTMART_PLACEHOLDER;
+  if (!link || link === LEGACY_HOTMART_LINK || HOTMART_PLACEHOLDERS.includes(link)) return HOTMART_PLACEHOLDER;
   return link;
 }
 

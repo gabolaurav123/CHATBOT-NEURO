@@ -2,6 +2,14 @@ const { query } = require('../config/db');
 const { env } = require('../config/env');
 
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+const HOTMART_PLACEHOLDERS = [
+  '(LINK HOTMART)',
+  '[LINK HOTMART]',
+  'LINK HOTMART',
+  '(HOTMART_LINK)',
+  '[HOTMART_LINK]',
+  'HOTMART_LINK'
+];
 
 function activeTextSetting(value, fallback, legacyValues = []) {
   const text = value === undefined || value === null ? '' : String(value).trim();
@@ -61,7 +69,7 @@ async function getRuntimeSettings() {
     product_price: activeTextSetting(settings.product_special_price || settings.product_price, String(env.PRODUCT_PRICE), ['270']),
     video_link: activeTextSetting(settings.video_link, env.VIDEO_LINK),
     pdf_link: settings.pdf_link || env.PDF_LINK,
-    hotmart_link: activeTextSetting(settings.hotmart_link, env.HOTMART_LINK, [LEGACY_HOTMART_LINK]),
+    hotmart_link: activeTextSetting(settings.hotmart_link, env.HOTMART_LINK, [LEGACY_HOTMART_LINK, ...HOTMART_PLACEHOLDERS]),
     openai_model: settings.openai_model || env.OPENAI_MODEL,
     openai_max_output_tokens: settings.openai_max_output_tokens || String(env.OPENAI_MAX_OUTPUT_TOKENS)
   };

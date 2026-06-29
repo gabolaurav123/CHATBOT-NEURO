@@ -8,6 +8,14 @@ const PRICE_USD = '72';
 const HOTMART_LINK = 'https://pay.hotmart.com/W101807995K';
 const HOTMART_PLACEHOLDER = HOTMART_LINK;
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+const HOTMART_PLACEHOLDERS = [
+  '(LINK HOTMART)',
+  '[LINK HOTMART]',
+  'LINK HOTMART',
+  '(HOTMART_LINK)',
+  '[HOTMART_LINK]',
+  'HOTMART_LINK'
+];
 
 const VALID_STAGES = [
   'inicio',
@@ -37,7 +45,7 @@ function normalizeText(value) {
 
 function configuredHotmartLink(settings = {}) {
   const link = String(settings.hotmart_link || '').trim();
-  if (!link || link === LEGACY_HOTMART_LINK) return HOTMART_PLACEHOLDER;
+  if (!link || link === LEGACY_HOTMART_LINK || HOTMART_PLACEHOLDERS.includes(link)) return HOTMART_PLACEHOLDER;
   return link;
 }
 
@@ -388,6 +396,58 @@ function directLinkReply(settings = {}) {
   ].join('\n');
 }
 
+function replaceHotmartPlaceholders(reply, link) {
+  let text = String(reply || '');
+  for (const placeholder of HOTMART_PLACEHOLDERS) {
+    text = text.split(placeholder).join(link);
+  }
+  return text
+    .replace(/\(\s*link\s+de\s+hotmart\s*\)/gi, link)
+    .replace(/\[\s*link\s+de\s+hotmart\s*\]/gi, link)
+    .replace(/\(\s*link\s+de\s+pago\s*\)/gi, link)
+    .replace(/\[\s*link\s+de\s+pago\s*\]/gi, link)
+    .trim();
+}
+
+function shouldForceHotmartUrl(decision, context = {}) {
+  const actions = (decision && decision.actions) || {};
+  const reply = String((decision && decision.reply) || '');
+  const text = normalizeText(reply);
+
+  return Boolean(
+    actions.send_hotmart_link
+    || actions.create_payment
+    || actions.create_payment_followups
+    || wantsDirectPaymentLink(context.userMessage)
+    || /te dejo.*(acceso|link)|aqui.*(acceso|link)|hotmart|link de pago|donde pago|pagar/.test(text)
+  );
+}
+
+function ensureHotmartUrlInDecision(decision, context = {}) {
+  if (!decision || !decision.reply || !shouldForceHotmartUrl(decision, context)) {
+    return decision;
+  }
+
+  const link = configuredHotmartLink(context.settings);
+  let reply = replaceHotmartPlaceholders(decision.reply, link);
+
+  if (!/https:\/\/pay\.hotmart\.com\/W101807995K/i.test(reply) && !/https?:\/\/pay\.hotmart\.com\//i.test(reply)) {
+    reply = `${reply}\n\n${link}`.trim();
+  }
+
+  return {
+    ...decision,
+    reply,
+    actions: {
+      ...emptyActions(),
+      ...(decision.actions || {}),
+      send_hotmart_link: true,
+      create_payment: true,
+      create_payment_followups: true
+    }
+  };
+}
+
 function badDecisionReason(decision, context) {
   if (!decision || !decision.reply) return 'La respuesta quedo vacia. Debes responder con texto natural.';
   if (isRepeatedReply(decision.reply, context.lead)) return 'La respuesta repite demasiado el ultimo mensaje del bot.';
@@ -616,6 +676,7 @@ REGLAS PRINCIPALES:
 - No uses Markdown.
 - Usa emojis moderados: ❤️ 🌿 🧠 ✨ 🎥.
 - Si tienes que escribir el link de Hotmart, usa exactamente: ${hotmartLink}.
+- Nunca escribas "link de Hotmart", "aqui esta el acceso" o "entra desde aqui" sin pegar la URL completa ${hotmartLink}.
 - Si tienes que escribir el video, usa exactamente: ${videoLink}.
 
 FLUJO:
@@ -842,7 +903,7 @@ async function generateAIConversationTurn(context) {
   let decision = await requestDecision(context);
   const firstReason = badDecisionReason(decision, context);
   if (!firstReason) {
-    return decision;
+    return ensureHotmartUrlInDecision(decision, context);
   }
 
   console.warn('AI decision rejected; retrying', {
@@ -862,7 +923,7 @@ async function generateAIConversationTurn(context) {
 
   const secondReason = badDecisionReason(decision, context);
   if (!secondReason) {
-    return decision;
+    return ensureHotmartUrlInDecision(decision, context);
   }
 
   console.warn('AI decision rejected after retry; using guarded fallback', {
@@ -875,7 +936,7 @@ async function generateAIConversationTurn(context) {
     return fallbackFreshStartDecision(context);
   }
 
-  return fallbackGenericDecision(context);
+  return ensureHotmartUrlInDecision(fallbackGenericDecision(context), context);
 }
 
 module.exports = {
