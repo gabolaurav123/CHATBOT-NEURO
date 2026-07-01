@@ -75,15 +75,13 @@ function detectPain(message) {
   const text = normalizeText(message);
 
   if (/^1$|ansiedad|nervios|panico|p[aá]nico/.test(text)) return 'ansiedad';
-  if (/^2$|autosabotaje|posterg|procrast|freno/.test(text)) return 'autosabotaje';
-  if (/^3$|pensamientos|mente|rumia|repetitiv/.test(text)) return 'pensamientos_repetitivos';
+  if (/^2$|miedo|miedos|inseguridad|insegur|culpa/.test(text)) return 'miedo';
+  if (/^3$|autosabotaje|posterg|procrast|freno/.test(text)) return 'autosabotaje';
   if (/^4$|relacion|pareja|apego|limites|l[ií]mites/.test(text)) return 'relaciones_dificiles';
   if (/^5$|bloqueo|bloquead|estancad/.test(text)) return 'bloqueo';
-  if (/trauma|herida|pasado|carga emocional/.test(text)) return 'traumas';
-  if (/dinero|abundancia|merecimiento|deuda|econom/.test(text)) return 'dinero';
-  if (/miedo|inseguridad|culpa/.test(text)) return 'miedo';
-  if (/proposito|prop[oó]sito|sentido|no avanzo|avanzar/.test(text)) return 'proposito';
-  if (/^6$|solo info|informacion|información|info/.test(text)) return 'informacion';
+  if (/^6$|trauma|herida|pasado|carga emocional|cargas/.test(text)) return 'traumas';
+  if (/pensamientos|mente|rumia|repetitiv/.test(text)) return 'pensamientos_repetitivos';
+  if (/solo info|informacion|información|info/.test(text)) return 'informacion';
 
   return null;
 }
@@ -146,7 +144,7 @@ function detectViewedPdf(message) {
 
 function detectProgramDetailsIntent(message) {
   const text = normalizeText(message);
-  return /(como funciona|que incluye|qué incluye|de que trata|programa|gimnasio|cerebro|cuanto dura|duracion|clases|certificado|garantia|garantía|resumen)/.test(text);
+  return /(como funciona|que incluye|qué incluye|de que trata|programa|neuro|neurotraumas|cuanto dura|duracion|clases|garantia|garantía|resumen)/.test(text);
 }
 
 function detectFreeMaterialIntent(message) {

@@ -1,7 +1,13 @@
 const { query } = require('../config/db');
 const { env } = require('../config/env');
 
-const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+const DEFAULT_PRODUCT_NAME = 'Neurotraumas';
+const DEFAULT_NORMAL_PRICE = '360';
+const DEFAULT_SPECIAL_PRICE = '270';
+const DEFAULT_VIDEO_LINK = 'https://drive.google.com/file/d/1gpukjlEwfQMXHN8LD_GN2-IEncwZ3wFy/view?usp=drive_link';
+const DEFAULT_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/W101807995K';
+const LEGACY_VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
 const HOTMART_PLACEHOLDERS = [
   '(LINK HOTMART)',
   '[LINK HOTMART]',
@@ -63,13 +69,13 @@ async function getRuntimeSettings() {
   const settings = await getSettings();
 
   return {
-    product_name: activeTextSetting(settings.product_name, env.PRODUCT_NAME, ['Neurotraumas']),
-    product_normal_price: activeTextSetting(settings.product_normal_price, String(env.PRODUCT_NORMAL_PRICE), ['360']),
-    product_special_price: activeTextSetting(settings.product_special_price || settings.product_price, String(env.PRODUCT_SPECIAL_PRICE), ['270']),
-    product_price: activeTextSetting(settings.product_special_price || settings.product_price, String(env.PRODUCT_PRICE), ['270']),
-    video_link: activeTextSetting(settings.video_link, env.VIDEO_LINK),
+    product_name: activeTextSetting(settings.product_name, DEFAULT_PRODUCT_NAME, ['Gimnasio del Cerebro']),
+    product_normal_price: activeTextSetting(settings.product_normal_price, DEFAULT_NORMAL_PRICE, ['72']),
+    product_special_price: activeTextSetting(settings.product_special_price || settings.product_price, DEFAULT_SPECIAL_PRICE, ['72']),
+    product_price: activeTextSetting(settings.product_special_price || settings.product_price, DEFAULT_SPECIAL_PRICE, ['72']),
+    video_link: activeTextSetting(settings.video_link, DEFAULT_VIDEO_LINK, [LEGACY_VIDEO_LINK]),
     pdf_link: settings.pdf_link || env.PDF_LINK,
-    hotmart_link: activeTextSetting(settings.hotmart_link, env.HOTMART_LINK, [LEGACY_HOTMART_LINK, ...HOTMART_PLACEHOLDERS]),
+    hotmart_link: activeTextSetting(settings.hotmart_link, DEFAULT_HOTMART_LINK, [LEGACY_HOTMART_LINK, ...HOTMART_PLACEHOLDERS]),
     openai_model: settings.openai_model || env.OPENAI_MODEL,
     openai_max_output_tokens: settings.openai_max_output_tokens || String(env.OPENAI_MAX_OUTPUT_TOKENS)
   };

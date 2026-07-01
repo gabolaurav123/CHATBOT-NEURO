@@ -1,9 +1,9 @@
 const { env } = require('../config/env');
 const { addHours, addDays } = require('../utils/date');
 
-const VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
-const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/W101807995K';
-const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+const VIDEO_LINK = 'https://drive.google.com/file/d/1gpukjlEwfQMXHN8LD_GN2-IEncwZ3wFy/view?usp=drive_link';
+const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/T103515864E';
+const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/W101807995K';
 const HOTMART_PLACEHOLDERS = [
   '(LINK HOTMART)',
   '[LINK HOTMART]',
@@ -33,11 +33,11 @@ Si realmente queres cambiar lo que venis repitiendo, no lo dejes para despues.
 
 A veces una sola decision cambia anos de patrones.
 
-Te dejo nuevamente el video:
+Te dejo nuevamente el video oficial:
 
-🎥 ${VIDEO_LINK}
+${VIDEO_LINK}
 
-Y si ya queres entrar al entrenamiento, este es el acceso:
+Y si ya queres entrar a Neurotraumas, este es el acceso:
 
 ${link}`;
 }
@@ -51,7 +51,7 @@ Hay personas que siguen esperando el momento perfecto.
 
 Y hay personas que deciden empezar incluso con miedo.
 
-Si queres trabajar tus cargas emocionales, tus patrones y empezar a cambiar tu vida desde adentro, este puede ser tu momento.
+Si queres trabajar tus cargas emocionales, tus patrones y empezar a cambiar tu vida desde adentro, Neurotraumas puede ser un primer paso.
 
 El acceso al entrenamiento esta aqui:
 
@@ -63,7 +63,7 @@ function paymentFollowUp3(hotmartLink) {
 
   return `No quiero presionarte ❤️
 
-Solo recordarte que el entrenamiento cuesta 72 USD, el acceso es de por vida y podes volver al contenido cada vez que lo necesites.
+Solo recordarte que Neurotraumas queda en USD 270 por este canal, con acceso de por vida y garantia de 14 dias.
 
 Si sentis que ya es momento, entras desde aqui:
 

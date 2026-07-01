@@ -6,16 +6,15 @@ const root = path.join(__dirname, '..');
 const ignored = new Set(['node_modules', '.git', '.baileys_auth']);
 const files = [];
 const blockedPromptFragments = [
-  ['Eres el motor conversacional', 'de Neurotraumas para WhatsApp'].join(' '),
   ['Debes responder a absolutamente todo', 'lo que la persona escriba'].join(' '),
-  ['Hola, soy', 'Marisa'].join(' '),
-  ['Vi tu interés en', 'NEUROTRAUMAS'].join(' '),
-  ['Precio especial por este canal: USD', '270'].join(' '),
   [['No estas', 'roto.'].join(' '), 'No te falta fuerza de voluntad.'].join(' '),
   ['No estas', 'roto.'].join(' '),
   ['Para orientarte mejor,', 'respondeme esto:'].join(' '),
   ['Cual es tu nombre?', 'De que pais sos?'].join(' '),
-  ['veo que', 'venis liderando'].join(' ')
+  ['veo que', 'venis liderando'].join(' '),
+  ['Eres Priscila, asistente', 'del Gimnasio del Cerebro'].join(' '),
+  ['Hola 🌿 soy Priscila', 'del Gimnasio del Cerebro'].join(' '),
+  ['Precio del entrenamiento:', '72 USD'].join(' ')
 ];
 
 function walk(dir) {

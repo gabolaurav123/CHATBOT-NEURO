@@ -1,9 +1,11 @@
-const BOT_NAME = 'Priscila';
-const PRODUCT_NAME = 'Gimnasio del Cerebro';
-const VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
-const PRICE_USD = '72';
-const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/W101807995K';
-const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+const BOT_NAME = 'Marisa';
+const PRODUCT_NAME = 'Neurotraumas';
+const VIDEO_LINK = 'https://drive.google.com/file/d/1gpukjlEwfQMXHN8LD_GN2-IEncwZ3wFy/view?usp=drive_link';
+const NORMAL_PRICE_USD = '360';
+const PRICE_USD = '270';
+const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/T103515864E';
+const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/W101807995K';
+const LEGACY_VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
 const HOTMART_PLACEHOLDERS = [
   '(LINK HOTMART)',
   '[LINK HOTMART]',
@@ -25,8 +27,8 @@ function cleanSetting(value, fallback, legacyValues = []) {
 
 function prices(settings = {}) {
   return {
-    normal: cleanSetting(settings.product_normal_price, PRICE_USD, ['360']),
-    special: cleanSetting(settings.product_special_price || settings.product_price, PRICE_USD, ['270'])
+    normal: cleanSetting(settings.product_normal_price, NORMAL_PRICE_USD, ['72']),
+    special: cleanSetting(settings.product_special_price || settings.product_price, PRICE_USD, ['72'])
   };
 }
 
@@ -35,7 +37,7 @@ function hotmartLink(settings = {}) {
 }
 
 function videoLink(settings = {}) {
-  return cleanSetting(settings.video_link, VIDEO_LINK);
+  return cleanSetting(settings.video_link, VIDEO_LINK, [LEGACY_VIDEO_LINK]);
 }
 
 function pdfLink(settings = {}) {
@@ -43,24 +45,22 @@ function pdfLink(settings = {}) {
 }
 
 function firstMessage() {
-  return `Hola 🌿 soy ${BOT_NAME}, del ${PRODUCT_NAME} 🧠
+  return `Hola, soy ${BOT_NAME} 👋🌿
 
-Que bueno que llegaste hasta aqui.
+Gracias por escribirnos.
 
-Este espacio es para personas que sienten que hay algo en su vida que se repite, aunque intenten cambiarlo.
+${PRODUCT_NAME} es para personas que sienten que algo se repite en su vida y quieren empezar a trabajarlo desde la raiz.
 
-Puede ser ansiedad, bloqueos, relaciones dificiles, miedo, heridas emocionales, problemas con el dinero o sensacion de no avanzar.
-
-Para orientarte mejor, elegi la opcion que mas se parece a lo que estas viviendo ahora:
+Decime, que te gustaria mejorar primero?
 
 1️⃣ Ansiedad o pensamientos que no paran
 2️⃣ Miedos o inseguridad
-3️⃣ Bloqueos con el dinero
-4️⃣ Relaciones o heridas emocionales
-5️⃣ Traumas o cargas del pasado
-6️⃣ Falta de proposito o sensacion de estar estancad@
+3️⃣ Autosabotaje
+4️⃣ Relaciones dificiles
+5️⃣ Bloqueos emocionales
+6️⃣ Cargas del pasado
 
-Respondeme solo con el numero o con una palabra ❤️`;
+Respondeme solo con el numero ❤️`;
 }
 
 function greetingMessage(settings = {}, lead = null) {
@@ -76,23 +76,19 @@ function problemWelcomeMessage() {
 
 Eso que contas puede estar conectado con patrones emocionales que se repiten en automatico.
 
-En el ${PRODUCT_NAME} trabajamos con herramientas para empezar a mirar eso desde la raiz y reconfigurar tu mundo interno.
+${PRODUCT_NAME} puede ayudarte a trabajar eso desde la raiz con herramientas practicas y acompanamiento.
 
-Mira este video para entender como funciona el metodo:
-
-🎥 ${VIDEO_LINK}
-
-Cuando lo termines, escribime "YA LO VI" 🌿`;
+Quieres que te muestre como funciona o prefieres que te explique directo el programa?`;
 }
 
 function videoSentMessage(settings = {}) {
   return `Perfecto ❤️
 
-Mira este video para entender como funciona el metodo:
+Te dejo este video donde se explica como funciona ${PRODUCT_NAME} y por que muchas veces repetimos patrones aunque queramos cambiar:
 
-🎥 ${videoLink(settings)}
+${videoLink(settings)}
 
-Cuando lo termines, escribime "YA LO VI" y te explico como entrar al entrenamiento.`;
+Podes verlo con calma. Si sentis que conecta con lo que estas viviendo, te explico como entrar al programa 🌿`;
 }
 
 function videoDeclinedMessage() {
@@ -122,11 +118,11 @@ function diagnosticLongMessage() {
 
 Muchas veces no se trata de falta de voluntad, sino de patrones emocionales funcionando en automatico.
 
-El primer paso para entender como trabajarlo es mirar este video:
+Si queres ver como funciona, te dejo el video oficial:
 
-🎥 ${VIDEO_LINK}
+${VIDEO_LINK}
 
-Cuando lo termines, escribime "YA LO VI".`;
+Si preferis, tambien puedo explicarte directo el programa.`;
 }
 
 function diagnosticRecentMessage() {
@@ -138,19 +134,15 @@ function diagnosticUnknownMessage() {
 
 Justamente el entrenamiento te ayuda a observar patrones, emociones y cargas que quizas venis repitiendo sin darte cuenta.
 
-Mira este video primero:
+Puedo explicarte el programa o dejarte el video oficial para que lo revises con calma:
 
-🎥 ${VIDEO_LINK}
-
-Cuando lo termines, escribime "YA LO VI".`;
+${VIDEO_LINK}`;
 }
 
 function pdfOfferMessage() {
   return `En esta memoria no usamos PDF.
 
-El primer paso es mirar el video gratuito:
-
-🎥 ${VIDEO_LINK}`;
+Puedo dejarte el video oficial o explicarte el programa directo.`;
 }
 
 function pdfSentMessage(settings = {}) {
@@ -163,77 +155,60 @@ function pdfWaitingMessage() {
 }
 
 function programIntroMessage() {
-  return `Que bueno que lo viste ❤️
+  return `Que bueno ❤️
 
-Entonces ya entendiste algo importante:
+Entonces ya viste que no se trata solo de fuerza de voluntad, sino de trabajar los patrones que estan detras de lo que repetimos.
 
-No se trata solo de pensar positivo.
-Tampoco se trata solo de fuerza de voluntad.
+${PRODUCT_NAME} es un proceso de 12 semanas con clases en vivo, ejercicios, acompanamiento y herramientas practicas 🌿
 
-Muchas veces lo que vivimos esta conectado con patrones emocionales que se repiten en automatico.
+El valor normal es USD ${NORMAL_PRICE_USD}, pero por este canal queda en USD ${PRICE_USD}.
 
-El entrenamiento del ${PRODUCT_NAME} esta creado para que puedas trabajar paso a paso tus bloqueos, heridas, miedos y patrones internos con herramientas practicas.
-
-Queres que te pase el acceso para entrar al entrenamiento? 🌿`;
+Quieres que te pase el acceso oficial?`;
 }
 
 function offerMessage(settings = {}, lead = null) {
   const name = withName(lead);
-  const { special } = prices(settings);
+  const { normal, special } = prices(settings);
 
-  return `Que bueno que lo viste${name ? `, ${name}` : ''} ❤️
+  return `Que bueno${name ? `, ${name}` : ''} ❤️
 
-Entonces ya entendiste algo importante:
+Entonces ya viste que no se trata solo de fuerza de voluntad, sino de trabajar los patrones que estan detras de lo que repetimos.
 
-No se trata solo de pensar positivo.
-Tampoco se trata solo de fuerza de voluntad.
+${PRODUCT_NAME} es un programa de 12 semanas para trabajar ansiedad, miedos, autosabotaje, bloqueos, heridas emocionales y cargas del pasado.
 
-Muchas veces lo que vivimos esta conectado con patrones emocionales que se repiten en automatico.
+Incluye clases en vivo, grupo privado, ejercicios, material practico, 2 lives de seguimiento, acceso de por vida y garantia de 14 dias 🌿
 
-El entrenamiento del ${PRODUCT_NAME} incluye:
+El valor normal es USD ${normal}, pero por este canal queda en USD ${special}.
 
-✔️ 45 clases
-✔️ Material descargable
-✔️ Reloj Emocional
-✔️ Rueda del Alma
-✔️ Tarjetas Holograficas
-✔️ Herramientas practicas
-✔️ Acceso de por vida
-✔️ Aplicacion inmediata
-
-La inversion es de ${special} USD.
-
-Queres que te pase el acceso para entrar al entrenamiento? 🌿`;
+Quieres que te pase el acceso oficial?`;
 }
 
 function priceOnlyMessage(settings = {}) {
-  const { special } = prices(settings);
-  return `La inversion es de ${special} USD ❤️
+  const { normal, special } = prices(settings);
+  return `El valor normal es USD ${normal} ❤️
 
-Incluye acceso de por vida a las clases, materiales y herramientas.
+Por este canal queda en USD ${special}.
 
-Pero antes de decidir, te recomiendo ver el video para entender bien como funciona el metodo:
+Incluye el programa completo de 12 semanas, acompanamiento, ejercicios, acceso de por vida y garantia de 14 dias 🌿
 
-🎥 ${videoLink(settings)}
-
-Si despues sentis que es para vos, te paso el acceso 🌿`;
+Quieres que te pase el link oficial?`;
 }
 
 function summaryMessage(settings = {}) {
-  const { special } = prices(settings);
-  return `El ${PRODUCT_NAME} es un entrenamiento para trabajar bloqueos, heridas, miedos y patrones emocionales desde una metodologia paso a paso.
+  const { normal, special } = prices(settings);
+  return `${PRODUCT_NAME} es un programa de 12 semanas para trabajar ansiedad, miedos, autosabotaje, bloqueos, heridas emocionales y cargas del pasado.
 
-Incluye clases, materiales, herramientas practicas y acceso de por vida.
+Incluye clases en vivo, grupo privado, ejercicios, material practico, 2 lives de seguimiento, acceso de por vida y garantia de 14 dias.
 
-La inversion es de ${special} USD.`;
+El valor normal es USD ${normal}, pero por este canal queda en USD ${special}.`;
 }
 
 function freeMaterialsMessage(settings = {}) {
-  return `El primer paso gratuito es mirar este video:
+  return `Te dejo el video oficial para que veas como funciona:
 
-🎥 ${videoLink(settings)}
+${videoLink(settings)}
 
-Cuando lo termines, escribime "YA LO VI" y te explico como entrar al entrenamiento.`;
+Si sentis que conecta con lo que estas viviendo, te explico como entrar al programa 🌿`;
 }
 
 function hotmartMessage(lead = null, linkValue = null, settings = {}) {
@@ -241,21 +216,17 @@ function hotmartMessage(lead = null, linkValue = null, settings = {}) {
   const link = linkValue || hotmartLink(settings);
   const { special } = prices(settings);
 
-  return `Me alegra mucho que lo sientas asi${name ? `, ${name}` : ''} ❤️
+  return `Gracias${name ? `, ${name}` : ''} ❤️
 
-Este puede ser el primer paso para dejar de repetir lo mismo y empezar a trabajar en vos desde otro lugar.
+Ya deje tus datos registrados para poder acompanarte mejor.
 
-No estas comprando solo un curso.
-
-Estas tomando una decision para cambiar tu relacion con tus emociones, tus patrones y tu historia.
-
-La inversion es de ${special} USD y el acceso es de por vida.
-
-Entras desde aqui:
+Te dejo el acceso oficial por Hotmart:
 
 ${link}
 
-Cuando hagas la compra, escribime "YA COMPRE" y te doy la bienvenida.`;
+Ahi puedes hacer tu inscripcion con el precio especial de USD ${special} y garantia de 14 dias 🌿
+
+Cuando completes tu inscripcion, escribime "ya pague" y te ayudo con el siguiente paso.`;
 }
 
 const objectionReplies = {
@@ -269,7 +240,7 @@ Cuanto te esta costando seguir con el mismo problema?
 
 A veces el costo de no trabajar nuestros patrones termina siendo mas alto que la inversion.
 
-El entrenamiento cuesta ${PRICE_USD} USD y tenes acceso de por vida.`,
+El programa queda en USD ${PRICE_USD} por este canal y tiene garantia de 14 dias.`,
 
   tiempo: `Te entiendo ❤️
 
@@ -296,11 +267,9 @@ function crisisMessage() {
 
 En este momento lo mas importante es que no estes sol@.
 
-Por favor busca ayuda profesional inmediata o comunicate con una linea de emergencia de tu pais.
+Por favor busca ayuda inmediata con una persona de confianza, un profesional de salud o emergencias de tu pais.
 
-Este entrenamiento puede acompanar procesos personales, pero no reemplaza atencion psicologica, medica o terapeutica en una situacion urgente.
-
-Ahora lo mas importante es tu seguridad.`;
+${PRODUCT_NAME} puede acompanar procesos personales, pero no reemplaza ayuda profesional en una situacion urgente 🌿`;
 }
 
 function deleteMemoryMessage() {
@@ -336,7 +305,14 @@ Cuando sientas que es tu momento, podes retomar por aca.`;
 function unclearMessage() {
   return `Te entiendo ❤️
 
-Para orientarte mejor, decime que es lo que mas queres cambiar ahora mismo: ansiedad, miedo, dinero, relaciones, traumas, bloqueo o proposito?`;
+Para orientarte mejor, decime que te gustaria mejorar primero:
+
+1️⃣ Ansiedad o pensamientos que no paran
+2️⃣ Miedos o inseguridad
+3️⃣ Autosabotaje
+4️⃣ Relaciones dificiles
+5️⃣ Bloqueos emocionales
+6️⃣ Cargas del pasado`;
 }
 
 function postLinkFallback(lead = null) {
@@ -348,17 +324,13 @@ Revisalo con calma. Si te surge alguna duda sobre el pago, el acceso o el conten
 
 function paymentReportedMessage(lead = null) {
   const name = withName(lead);
-  return `Bienvenid@${name ? `, ${name}` : ''}!! 🧠✨
+  return `Que alegria${name ? `, ${name}` : ''} ❤️
 
-Acabas de tomar una decision muy importante.
+Gracias por avisarme.
 
-No compraste solo un curso.
+Ya diste un paso importante para empezar a trabajar en ti y en eso que vienes cargando 🌿
 
-Elegiste empezar a trabajar en vos, en tus patrones, en tus emociones y en todo eso que queres transformar.
-
-Estoy feliz de acompanarte en este camino.
-
-🌿 Nos vemos dentro.`;
+El equipo revisara tu inscripcion y te acompanara con el siguiente paso.`;
 }
 
 const painReplies = {
@@ -375,7 +347,7 @@ function diagnosticQuestion1() {
 }
 
 function diagnosticQuestion2() {
-  return `Que problema queres transformar primero: ansiedad, miedo, dinero, relaciones, trauma, bloqueo o proposito?`;
+  return `Que te gustaria mejorar primero: ansiedad, miedos, autosabotaje, relaciones dificiles, bloqueos emocionales o cargas del pasado?`;
 }
 
 function diagnosticQuestion3() {

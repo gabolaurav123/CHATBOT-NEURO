@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS leads (
   name TEXT,
   email TEXT,
   username TEXT,
-  crm_section TEXT DEFAULT 'holografica',
+  crm_section TEXT DEFAULT 'neurotraumas',
   source_keyword TEXT,
   main_pain TEXT,
   emotional_response TEXT,
@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS leads (
 ALTER TABLE leads ALTER COLUMN phone DROP NOT NULL;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS whatsapp_lid TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS display_phone TEXT;
-ALTER TABLE leads ADD COLUMN IF NOT EXISTS crm_section TEXT DEFAULT 'holografica';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS crm_section TEXT DEFAULT 'neurotraumas';
+ALTER TABLE leads ALTER COLUMN crm_section SET DEFAULT 'neurotraumas';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS objection_type TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS video_sent BOOLEAN DEFAULT FALSE;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS video_sent_at TIMESTAMP;
@@ -61,7 +62,7 @@ ALTER TABLE leads ADD COLUMN IF NOT EXISTS offer_presented_at TIMESTAMP;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS purchase_intent BOOLEAN DEFAULT FALSE;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS closed_conversation BOOLEAN DEFAULT FALSE;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS crisis_detected BOOLEAN DEFAULT FALSE;
-UPDATE leads SET crm_section = 'holografica' WHERE crm_section IS NULL OR crm_section = '';
+UPDATE leads SET crm_section = 'neurotraumas' WHERE crm_section IS NULL OR crm_section = '';
 
 CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -134,7 +135,7 @@ CREATE TABLE IF NOT EXISTS payments (
   phone TEXT,
   status TEXT DEFAULT 'pending',
   provider TEXT DEFAULT 'hotmart',
-  amount NUMERIC DEFAULT 72,
+  amount NUMERIC DEFAULT 270,
   currency TEXT DEFAULT 'USD',
   payment_link TEXT,
   reported_by_user BOOLEAN DEFAULT FALSE,

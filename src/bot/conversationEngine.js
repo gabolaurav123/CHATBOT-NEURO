@@ -27,8 +27,8 @@ const STAGE_ALIASES = {
   closed: 'cierre_frio'
 };
 
-const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
-const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/W101807995K';
+const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/W101807995K';
+const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/T103515864E';
 const HOTMART_PLACEHOLDERS = [
   '(LINK HOTMART)',
   '[LINK HOTMART]',
@@ -42,6 +42,11 @@ const ALLOWED_AI_LEAD_FIELDS = new Set([
   'name',
   'email',
   'username',
+  'phone',
+  'display_phone',
+  'source',
+  'source_keyword',
+  'country',
   'main_pain',
   'emotional_response',
   'problem_duration',
@@ -96,9 +101,9 @@ function getHotmartLink(settings = {}) {
 }
 
 function getAmount(settings = {}) {
-  const raw = settings.product_special_price || settings.product_price || env.PRODUCT_SPECIAL_PRICE || 72;
+  const raw = settings.product_special_price || settings.product_price || env.PRODUCT_SPECIAL_PRICE || 270;
   const amount = Number(String(raw).replace(/[^\d.]/g, ''));
-  return Number.isFinite(amount) && amount > 0 ? amount : 72;
+  return Number.isFinite(amount) && amount > 0 ? amount : 270;
 }
 
 function sanitizeLeadFields(aiFields = {}, lead, body) {
@@ -117,6 +122,34 @@ function sanitizeLeadFields(aiFields = {}, lead, body) {
     if (key === 'urgency') {
       const urgency = Number(value);
       if (Number.isFinite(urgency) && urgency >= 1 && urgency <= 10) safe.urgency = urgency;
+      continue;
+    }
+
+    if (key === 'phone') {
+      const phone = normalizeUserProvidedPhone(value);
+      if (phone) {
+        safe.phone = phone;
+        safe.display_phone = phone;
+      }
+      continue;
+    }
+
+    if (key === 'display_phone') {
+      const phone = normalizeUserProvidedPhone(value);
+      safe.display_phone = phone || String(value).trim().slice(0, 500);
+      continue;
+    }
+
+    if (key === 'source') {
+      safe.source_keyword = String(value).trim().slice(0, 500);
+      continue;
+    }
+
+    if (key === 'country') {
+      safe.notes = [
+        safe.notes || lead.notes,
+        `Country: ${String(value).trim().slice(0, 120)}`
+      ].filter(Boolean).join('\n').slice(0, 2000);
       continue;
     }
 

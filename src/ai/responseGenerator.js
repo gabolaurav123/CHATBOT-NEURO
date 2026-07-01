@@ -1,13 +1,15 @@
 const { generateBotDecision } = require('../services/aiService');
 const { PROMPT_VERSION } = require('./systemPrompt');
 
-const BOT_NAME = 'Priscila';
-const PRODUCT_NAME = 'Gimnasio del Cerebro';
-const VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
-const PRICE_USD = '72';
-const HOTMART_LINK = 'https://pay.hotmart.com/W101807995K';
+const BOT_NAME = 'Marisa';
+const PRODUCT_NAME = 'Neurotraumas';
+const VIDEO_LINK = 'https://drive.google.com/file/d/1gpukjlEwfQMXHN8LD_GN2-IEncwZ3wFy/view?usp=drive_link';
+const NORMAL_PRICE_USD = '360';
+const PRICE_USD = '270';
+const HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
 const HOTMART_PLACEHOLDER = HOTMART_LINK;
-const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
+const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/W101807995K';
+const LEGACY_VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
 const HOTMART_PLACEHOLDERS = [
   '(LINK HOTMART)',
   '[LINK HOTMART]',
@@ -51,7 +53,8 @@ function configuredHotmartLink(settings = {}) {
 
 function configuredVideoLink(settings = {}) {
   const link = String(settings.video_link || '').trim();
-  return link || VIDEO_LINK;
+  if (!link || link === LEGACY_VIDEO_LINK) return VIDEO_LINK;
+  return link;
 }
 
 function isRepeatedReply(reply, lead) {
@@ -73,7 +76,7 @@ function userWantsFreshStart(message) {
 
 function isColdStartMessage(message) {
   const text = normalizeText(message);
-  return /^(hola|buenas|buen dia|buenos dias|buenas tardes|buenas noches|info|ayuda|inicio|empezar|quiero informacion|quiero info|quiero empezar|informacion|gimnasio|cerebro|gimnasio del cerebro)$/.test(text);
+  return /^(hola|buenas|buen dia|buenos dias|buenas tardes|buenas noches|info|ayuda|inicio|empezar|quiero informacion|quiero info|quiero empezar|informacion|neuro|neurotraumas|cuentame|cuéntame|dime)$/.test(text);
 }
 
 function hasForbiddenFormatting(reply) {
@@ -82,24 +85,22 @@ function hasForbiddenFormatting(reply) {
 
 function initialOptionsReply(prefix = '') {
   const lines = [
-    `Hola 🌿 soy ${BOT_NAME}, del ${PRODUCT_NAME} 🧠`,
+    `Hola, soy ${BOT_NAME} 👋🌿`,
     '',
-    'Que bueno que llegaste hasta aqui.',
+    'Gracias por escribirnos.',
     '',
-    'Este espacio es para personas que sienten que hay algo en su vida que se repite, aunque intenten cambiarlo.',
+    `${PRODUCT_NAME} es para personas que sienten que algo se repite en su vida y quieren empezar a trabajarlo desde la raiz.`,
     '',
-    'Puede ser ansiedad, bloqueos, relaciones dificiles, miedo, heridas emocionales, problemas con el dinero o sensacion de no avanzar.',
-    '',
-    'Para orientarte mejor, elegi la opcion que mas se parece a lo que estas viviendo ahora:',
+    'Decime, que te gustaria mejorar primero?',
     '',
     '1️⃣ Ansiedad o pensamientos que no paran',
     '2️⃣ Miedos o inseguridad',
-    '3️⃣ Bloqueos con el dinero',
-    '4️⃣ Relaciones o heridas emocionales',
-    '5️⃣ Traumas o cargas del pasado',
-    '6️⃣ Falta de proposito o sensacion de estar estancad@',
+    '3️⃣ Autosabotaje',
+    '4️⃣ Relaciones dificiles',
+    '5️⃣ Bloqueos emocionales',
+    '6️⃣ Cargas del pasado',
     '',
-    'Respondeme solo con el numero o con una palabra ❤️'
+    'Respondeme solo con el numero ❤️'
   ];
 
   if (prefix) {
@@ -124,8 +125,8 @@ function shouldUseInitialOptions(context = {}) {
 
 function includesInitialOptions(reply) {
   const text = normalizeText(reply);
-  return text.includes('soy priscila')
-    && text.includes('gimnasio del cerebro')
+  return text.includes('soy marisa')
+    && text.includes('neurotraumas')
     && text.includes('ansiedad o pensamientos')
     && text.includes('miedos o inseguridad')
     && text.includes('respondeme solo');
@@ -137,7 +138,7 @@ function isOverloadedFirstContact(reply, context = {}) {
   const raw = String(reply || '');
   const text = normalizeText(raw);
   const asksPersonalData = /(tu nombre|cual es tu nombre|como te llamas|pais|celular|telefono|numero de celular|numero telefonico)/.test(text);
-  const sendsLinksOrPrice = /youtu\.be|youtube|hotmart|pay\.hotmart|72\s*usd|link de pago|\(link hotmart\)/.test(text);
+  const sendsLinksOrPrice = /drive\.google|youtu\.be|youtube|hotmart|pay\.hotmart|270\s*usd|360\s*usd|link de pago|\(link hotmart\)/.test(text);
 
   return asksPersonalData || sendsLinksOrPrice;
 }
@@ -153,7 +154,7 @@ function isPrematurePaymentDump(reply, context = {}) {
   const text = normalizeText(reply);
   const userText = normalizeText(context.userMessage);
   const askedCommercial = /precio|cuanto cuesta|valor|comprar|pagar|link|hotmart|inscrib|acceso/.test(userText);
-  return !askedCommercial && (/72\s*usd|hotmart|link de pago|\(link hotmart\)/.test(text));
+  return !askedCommercial && (/270\s*usd|360\s*usd|hotmart|link de pago|\(link hotmart\)/.test(text));
 }
 
 function hasHotmartLink(reply) {
@@ -163,7 +164,7 @@ function hasHotmartLink(reply) {
 
 function hasVideoLink(reply) {
   const text = normalizeText(reply);
-  return /youtu\.be|youtube|video/.test(text);
+  return /drive\.google|youtu\.be|youtube|video/.test(text);
 }
 
 function isViewedVideoMessage(message) {
@@ -187,6 +188,11 @@ function wantsDirectPaymentLink(message) {
   return /(link directo|pasame el link|mandame el link|enviame el link|quiero el link|link de pago|donde pago|quiero pagar|pagar ahora|hacer el pago)/.test(text);
 }
 
+function refusesToShareData(message) {
+  const text = normalizeText(message);
+  return /(no quiero dar datos|sin datos|no te doy mis datos|no quiero pasar datos|no quiero dar mi numero|no quiero pasar mi numero|pasame el link igual|dame el link igual|mandame el link igual)/.test(text);
+}
+
 function isAccessAffirmative(message) {
   const text = normalizeText(message);
   return /^(si|sí|sii|claro|dale|ok|okay|quiero|quiero el acceso|pasame el acceso|mandame el acceso|enviame el acceso|me interesa entrar|lo quiero)$/.test(text)
@@ -208,28 +214,28 @@ function sentHotmartTooEarly(decision, context = {}) {
     return hasHotmartLink(reply) || actions.send_hotmart_link || actions.create_payment || actions.create_payment_followups;
   }
 
-  if (isAskingForAccessAfterOffer(context) && !wantsDirectPaymentLink(context.userMessage)) {
+  if ((isAskingForAccessAfterOffer(context) || wantsDirectPaymentLink(context.userMessage)) && !refusesToShareData(context.userMessage)) {
     return hasHotmartLink(reply) || actions.send_hotmart_link || actions.create_payment || actions.create_payment_followups;
   }
 
   if (isInterestBeforeVideo(context.userMessage) && !(context.lead && context.lead.video_sent)) {
-    return hasHotmartLink(reply) || actions.send_hotmart_link || actions.create_payment || actions.create_payment_followups || !hasVideoLink(reply);
+    return hasHotmartLink(reply) || actions.send_hotmart_link || actions.create_payment || actions.create_payment_followups;
   }
 
   if (isPriceQuestionOnly(context.userMessage)) {
-    return hasHotmartLink(reply) || actions.send_hotmart_link || actions.create_payment || actions.create_payment_followups || !hasVideoLink(reply);
+    return hasHotmartLink(reply) || actions.send_hotmart_link || actions.create_payment || actions.create_payment_followups;
   }
 
   return false;
 }
 
-function problemChoiceMissingVideo(decision, context = {}) {
+function problemChoiceSentVideoTooEarly(decision, context = {}) {
   if (shouldUseInitialOptions(context)) return false;
   if (context.lead && context.lead.video_sent) return false;
   if (!detectProblemChoice(context.userMessage)) return false;
 
   const actions = (decision && decision.actions) || {};
-  return !hasVideoLink(decision && decision.reply) && !actions.send_video_link;
+  return hasVideoLink(decision && decision.reply) || actions.send_video_link;
 }
 
 function detectProblemChoice(message) {
@@ -237,32 +243,24 @@ function detectProblemChoice(message) {
 
   if (/^1$|ansiedad|pensamientos|mente|no paran|rumia|repetitiv/.test(text)) return 'ansiedad';
   if (/^2$|miedo|miedos|inseguridad|insegur|culpa/.test(text)) return 'miedos';
-  if (/^3$|dinero|abundancia|merecimiento|deuda|econom|bloqueo con el dinero/.test(text)) return 'dinero';
+  if (/^3$|autosabotaje|sabotaje|posterg|procrast|freno/.test(text)) return 'autosabotaje';
   if (/^4$|relacion|relaciones|pareja|apego|herida emocional|abandono|rechazo/.test(text)) return 'relaciones';
-  if (/^5$|trauma|traumas|pasado|carga|cargas/.test(text)) return 'traumas';
-  if (/^6$|proposito|estancad|estancamiento|no avanzo|sentido|bloquead/.test(text)) return 'proposito';
+  if (/^5$|bloqueo|bloqueos|bloquead|estancad/.test(text)) return 'bloqueos';
+  if (/^6$|trauma|traumas|pasado|carga|cargas/.test(text)) return 'cargas';
 
   return null;
 }
 
-function problemVideoReply(problem, settings = {}) {
-  const video = configuredVideoLink(settings);
+function problemConnectionReply(problem) {
   const replies = {
     ansiedad: [
       'Te entiendo ❤️',
       '',
-      'La ansiedad muchas veces no aparece de la nada.',
-      'A veces esta conectada con emociones acumuladas, miedos internos o patrones que se activan en automatico.',
+      'La ansiedad muchas veces no es solo pensar demasiado. A veces hay emociones, recuerdos o patrones internos que se activan en automatico.',
       '',
-      `En el ${PRODUCT_NAME} trabajamos justamente con herramientas para empezar a mirar eso desde la raiz, sin juzgarte y sin exigirte hacerlo perfecto.`,
+      `${PRODUCT_NAME} trabaja justamente eso: identificar que se activa en ti y empezar a trabajarlo con herramientas practicas 🌿`,
       '',
-      'Prepare un video corto donde se explica como funciona el metodo y por que muchas personas repiten patrones aunque quieran cambiar.',
-      '',
-      'Miralo aqui:',
-      '',
-      `🎥 ${video}`,
-      '',
-      'Cuando lo termines, escribime: "YA LO VI" 🌿'
+      'Quieres que te muestre como funciona o prefieres que te explique directo el programa?'
     ],
     miedos: [
       'Te entiendo ❤️',
@@ -270,100 +268,62 @@ function problemVideoReply(problem, settings = {}) {
       'Muchas veces el miedo no significa que no puedas avanzar.',
       'A veces significa que hay una parte interna intentando protegerte desde experiencias pasadas.',
       '',
-      `El metodo del ${PRODUCT_NAME} te ayuda a observar esos patrones y empezar a trabajarlos con herramientas practicas.`,
+      `${PRODUCT_NAME} esta diseñado para ayudarte a trabajar esos patrones y empezar a responder distinto 🌿`,
       '',
-      'Mira este video. Ahi vas a entender como funciona:',
-      '',
-      `🎥 ${video}`,
-      '',
-      'Cuando lo termines, escribime: "YA LO VI" 🌿'
+      'Quieres que te muestre como funciona o prefieres que te explique directo el programa?'
     ],
-    dinero: [
-      'Entiendo ❤️',
+    autosabotaje: [
+      'Te entiendo ❤️',
       '',
-      'Muchas veces el bloqueo con el dinero no es solo externo.',
-      'Tambien puede estar relacionado con merecimiento, culpa, miedo, repeticion familiar o formas internas de limitarte sin darte cuenta.',
+      'El autosabotaje suele aparecer cuando una parte de ti quiere avanzar, pero otra parte se frena por miedo, culpa o experiencias no resueltas.',
       '',
-      `El ${PRODUCT_NAME} trabaja justamente con esos patrones emocionales que influyen en lo que vivimos.`,
+      `En ${PRODUCT_NAME} trabajamos esos patrones para que puedas empezar a romper ese ciclo 🌿`,
       '',
-      'Mira este video para entender como funciona el metodo:',
-      '',
-      `🎥 ${video}`,
-      '',
-      'Cuando lo termines, escribime: "YA LO VI" 🌿'
+      'Quieres que te muestre como funciona o prefieres que te explique directo el programa?'
     ],
     relaciones: [
       'Te entiendo ❤️',
       '',
-      'Las relaciones muchas veces muestran heridas que todavia duelen: abandono, rechazo, dependencia, culpa o patrones familiares que se repiten.',
+      'Las relaciones muchas veces activan heridas antiguas: abandono, rechazo, dependencia, culpa o miedo a no ser suficiente.',
       '',
-      'No se trata de culparte.',
-      'Se trata de empezar a mirar que patron hay detras.',
+      `${PRODUCT_NAME} te ayuda a identificar esas heridas y trabajar lo que se repite en tus vinculos 🌿`,
       '',
-      `En este video te explico como funciona el metodo del ${PRODUCT_NAME}:`,
-      '',
-      `🎥 ${video}`,
-      '',
-      'Cuando lo termines, escribime: "YA LO VI" 🌿'
+      'Quieres que te muestre como funciona o prefieres que te explique directo el programa?'
     ],
-    traumas: [
-      'Te abrazo en eso ❤️',
-      '',
-      'Muchas veces las cargas del pasado siguen influyendo en como decidimos, como sentimos y como nos relacionamos.',
-      '',
-      'No siempre se trata de olvidar lo vivido.',
-      'A veces se trata de aprender a trabajarlo desde otro lugar.',
-      '',
-      `En este video vas a ver como funciona el metodo del ${PRODUCT_NAME}:`,
-      '',
-      `🎥 ${video}`,
-      '',
-      'Cuando lo termines, escribime: "YA LO VI" 🌿'
-    ],
-    proposito: [
+    bloqueos: [
       'Te entiendo ❤️',
       '',
-      'A veces una persona no esta perdida.',
-      'Solo esta atrapada en patrones internos que no le permiten avanzar con claridad.',
+      'A veces una persona no esta perdida. Solo esta atrapada en patrones emocionales que no le permiten avanzar.',
       '',
-      `El ${PRODUCT_NAME} ayuda a mirar esos bloqueos desde la raiz y empezar a trabajar una nueva forma de relacionarte con vos mism@.`,
+      `${PRODUCT_NAME} trabaja justamente esos bloqueos para que empieces a entender que pasa dentro de ti y como transformarlo 🌿`,
       '',
-      'Mira este video para entender como funciona:',
+      'Quieres que te muestre como funciona o prefieres que te explique directo el programa?'
+    ],
+    cargas: [
+      'Te entiendo ❤️',
       '',
-      `🎥 ${video}`,
+      'Muchas veces lo que vivimos en el pasado sigue afectando decisiones, emociones, relaciones y la forma en que reaccionamos.',
       '',
-      'Cuando lo termines, escribime: "YA LO VI" 🌿'
+      `${PRODUCT_NAME} esta creado para ayudarte a identificar esas cargas y empezar a trabajarlas desde la raiz 🌿`,
+      '',
+      'Quieres que te muestre como funciona o prefieres que te explique directo el programa?'
     ]
   };
 
-  return (replies[problem] || replies.proposito).join('\n');
+  return (replies[problem] || replies.bloqueos).join('\n');
 }
 
 function postVideoOfferReply() {
   return [
-    'Que bueno que lo viste ❤️',
+    'Que bueno ❤️',
     '',
-    'Entonces ya entendiste algo importante:',
+    'Entonces ya viste que no se trata solo de fuerza de voluntad, sino de trabajar los patrones que estan detras de lo que repetimos.',
     '',
-    'No se trata solo de pensar positivo.',
-    'Tampoco se trata solo de fuerza de voluntad.',
+    `${PRODUCT_NAME} es un proceso de 12 semanas con clases en vivo, ejercicios, acompanamiento y herramientas practicas 🌿`,
     '',
-    'Muchas veces lo que vivimos esta conectado con patrones emocionales que se repiten en automatico.',
+    `El valor normal es USD ${NORMAL_PRICE_USD}, pero por este canal queda en USD ${PRICE_USD}.`,
     '',
-    'Por eso el entrenamiento esta creado para que puedas trabajar paso a paso tus bloqueos, heridas, miedos y patrones internos con herramientas practicas.',
-    '',
-    'Incluye:',
-    '',
-    '✔️ 45 clases',
-    '✔️ Material descargable',
-    '✔️ Reloj Emocional',
-    '✔️ Rueda del Alma',
-    '✔️ Tarjetas Holograficas',
-    '✔️ Acceso de por vida',
-    '',
-    `La inversion es de ${PRICE_USD} USD.`,
-    '',
-    'Queres que te pase el acceso para entrar al entrenamiento? 🌿'
+    'Quieres que te pase el acceso oficial?'
   ].join('\n');
 }
 
@@ -371,7 +331,7 @@ function accessDataRequestReply() {
   return [
     'Perfecto ❤️',
     '',
-    'Para orientarte mejor y dejar registrado tu interes, pasame por favor:',
+    `Para dejarte registrad@ en el CRM de ${PRODUCT_NAME} y poder acompanarte si tienes dudas, pasame por favor:`,
     '',
     '1️⃣ Tu nombre',
     '2️⃣ Tu pais',
@@ -384,15 +344,15 @@ function accessDataRequestReply() {
 function directLinkReply(settings = {}) {
   const link = configuredHotmartLink(settings);
   return [
-    'Claro ❤️',
+    'No hay problema ❤️',
     '',
-    'Te dejo aqui el acceso al entrenamiento:',
+    'Te dejo igual el acceso oficial para que puedas revisarlo con calma:',
     '',
     link,
     '',
-    `La inversion es de ${PRICE_USD} USD y el acceso es de por vida.`,
+    `Ahi puedes hacer tu inscripcion con el precio especial de USD ${PRICE_USD} y garantia de 14 dias 🌿`,
     '',
-    'Cuando completes tu compra, escribime "YA COMPRE" y te doy la bienvenida 🧠✨'
+    'Si decides entrar, escribime "ya pague" y te ayudo con el siguiente paso.'
   ].join('\n');
 }
 
@@ -402,6 +362,7 @@ function replaceHotmartPlaceholders(reply, link) {
     text = text.split(placeholder).join(link);
   }
   return text
+    .replace(/https:\/\/pay\.hotmart\.com\/W101807995K/gi, link)
     .replace(/\(\s*link\s+de\s+hotmart\s*\)/gi, link)
     .replace(/\[\s*link\s+de\s+hotmart\s*\]/gi, link)
     .replace(/\(\s*link\s+de\s+pago\s*\)/gi, link)
@@ -418,7 +379,7 @@ function shouldForceHotmartUrl(decision, context = {}) {
     actions.send_hotmart_link
     || actions.create_payment
     || actions.create_payment_followups
-    || wantsDirectPaymentLink(context.userMessage)
+    || (wantsDirectPaymentLink(context.userMessage) && refusesToShareData(context.userMessage))
     || /te dejo.*(acceso|link)|aqui.*(acceso|link)|hotmart|link de pago|donde pago|pagar/.test(text)
   );
 }
@@ -431,7 +392,7 @@ function ensureHotmartUrlInDecision(decision, context = {}) {
   const link = configuredHotmartLink(context.settings);
   let reply = replaceHotmartPlaceholders(decision.reply, link);
 
-  if (!/https:\/\/pay\.hotmart\.com\/W101807995K/i.test(reply) && !/https?:\/\/pay\.hotmart\.com\//i.test(reply)) {
+  if (!/https:\/\/pay\.hotmart\.com\/T103515864E/i.test(reply) && !/https?:\/\/pay\.hotmart\.com\//i.test(reply)) {
     reply = `${reply}\n\n${link}`.trim();
   }
 
@@ -451,12 +412,12 @@ function ensureHotmartUrlInDecision(decision, context = {}) {
 function badDecisionReason(decision, context) {
   if (!decision || !decision.reply) return 'La respuesta quedo vacia. Debes responder con texto natural.';
   if (isRepeatedReply(decision.reply, context.lead)) return 'La respuesta repite demasiado el ultimo mensaje del bot.';
-  if (isMetaReply(decision.reply)) return 'La respuesta habla sobre instrucciones internas en vez de contestar como Priscila.';
+  if (isMetaReply(decision.reply)) return 'La respuesta habla sobre instrucciones internas en vez de contestar como Marisa.';
   if (hasForbiddenFormatting(decision.reply)) return 'No uses asteriscos, simbolos # ni formato Markdown. Responde con texto simple de WhatsApp.';
-  if (shouldUseInitialOptions(context) && !includesInitialOptions(decision.reply)) return 'Primer contacto frio: usa la bienvenida de Priscila del Gimnasio del Cerebro con las 6 opciones de problema. No pidas datos personales.';
+  if (shouldUseInitialOptions(context) && !includesInitialOptions(decision.reply)) return 'Primer contacto frio: usa la bienvenida de Marisa para Neurotraumas con las 6 opciones de problema. No pidas datos personales.';
   if (isOverloadedFirstContact(decision.reply, context)) return 'Primer contacto corregido: no pidas nombre, pais ni celular, y no mandes video, precio ni Hotmart en el primer mensaje.';
   if (isPrematurePaymentDump(decision.reply, context)) return 'En primer contacto frio no mandes precio ni Hotmart antes de pedir datos y problema, salvo que el usuario lo pida.';
-  if (problemChoiceMissingVideo(decision, context)) return 'La persona ya eligio un problema. Valida brevemente, conecta con ese problema y envia el video gratuito. No vuelvas a la bienvenida.';
+  if (problemChoiceSentVideoTooEarly(decision, context)) return 'La persona ya eligio un problema. Valida brevemente, conecta con Neurotraumas y pregunta si quiere ver como funciona o si prefiere explicacion directa. No mandes video todavia.';
   if (sentHotmartTooEarly(decision, context)) return 'No mandes Hotmart todavia. Si dijo YA LO VI, presenta el entrenamiento y pregunta si quiere el acceso. Si solo dijo SI al acceso, pide nombre, pais y celular. Si pregunto precio o dijo me interesa antes del video, manda el video y no Hotmart.';
   return null;
 }
@@ -482,6 +443,21 @@ function fallbackGenericDecision(context = {}) {
   const directPaymentLink = wantsDirectPaymentLink(context.userMessage);
   const priceOnly = isPriceQuestionOnly(context.userMessage);
   const interestBeforeVideo = isInterestBeforeVideo(context.userMessage) && !(context.lead && context.lead.video_sent);
+
+  if (directPaymentLink && !refusesToShareData(context.userMessage)) {
+    return {
+      reply: accessDataRequestReply(),
+      next_stage: 'datos_solicitados',
+      lead_fields: {
+        purchase_intent: true,
+        funnel_stage: 'datos_solicitados'
+      },
+      memory_patch: {
+        last_intent: 'access_requested'
+      },
+      actions: emptyActions()
+    };
+  }
 
   if (directPaymentLink) {
     return {
@@ -535,17 +511,23 @@ function fallbackGenericDecision(context = {}) {
   if (problem || interestBeforeVideo || priceOnly) {
     const reply = priceOnly
       ? [
-        `La inversion es de ${PRICE_USD} USD ❤️`,
+        `El valor normal es USD ${NORMAL_PRICE_USD} ❤️`,
         '',
-        'Incluye acceso de por vida a las clases, materiales y herramientas.',
+        `Por este canal queda en USD ${PRICE_USD}.`,
         '',
-        'Pero antes de decidir, te recomiendo ver el video para entender bien como funciona el metodo:',
+        'Incluye el programa completo de 12 semanas, acompanamiento, ejercicios, acceso de por vida y garantia de 14 dias 🌿',
         '',
-        `🎥 ${configuredVideoLink(context.settings)}`,
-        '',
-        'Si despues sentis que es para vos, te paso el acceso 🌿'
+        'Quieres que te pase el link oficial?'
       ].join('\n')
-      : problemVideoReply(problem || 'proposito', context.settings);
+      : (interestBeforeVideo
+        ? [
+          'Me alegra que te interese ❤️',
+          '',
+          `${PRODUCT_NAME} puede ayudarte a trabajar patrones que se repiten desde la raiz, con herramientas practicas y acompanamiento.`,
+          '',
+          'Quieres que te muestre como funciona o prefieres que te explique directo el programa?'
+        ].join('\n')
+        : problemConnectionReply(problem || 'bloqueos'));
 
     return {
       reply,
@@ -555,12 +537,9 @@ function fallbackGenericDecision(context = {}) {
         funnel_stage: 'diagnostico'
       },
       memory_patch: {
-        last_intent: priceOnly ? 'price_before_video' : 'problem_video'
+        last_intent: priceOnly ? 'price_question' : 'problem_connection'
       },
-      actions: {
-        ...emptyActions(),
-        send_video_link: true
-      }
+      actions: emptyActions()
     };
   }
 
@@ -570,14 +549,14 @@ function fallbackGenericDecision(context = {}) {
       : [
         'Entiendo ❤️',
         '',
-        'Para orientarte mejor, elegi la opcion que mas se parece a lo que estas viviendo ahora:',
+        'Para orientarte mejor, decime que te gustaria mejorar primero:',
         '',
         '1️⃣ Ansiedad o pensamientos que no paran',
         '2️⃣ Miedos o inseguridad',
-        '3️⃣ Bloqueos con el dinero',
-        '4️⃣ Relaciones o heridas emocionales',
-        '5️⃣ Traumas o cargas del pasado',
-        '6️⃣ Falta de proposito o sensacion de estar estancad@'
+        '3️⃣ Autosabotaje',
+        '4️⃣ Relaciones dificiles',
+        '5️⃣ Bloqueos emocionales',
+        '6️⃣ Cargas del pasado'
       ].join('\n'),
     next_stage: normalizeStage(context.currentStage, 'captacion'),
     lead_fields: {},
@@ -647,58 +626,66 @@ Decide el siguiente turno completo del chatbot de venta automatica.
 MEMORIA ACTIVA Y UNICA:
 - Bot: ${BOT_NAME}.
 - Marca/producto: ${PRODUCT_NAME}.
-- Video gratuito exacto: ${videoLink}.
-- Precio unico del entrenamiento: ${PRICE_USD} USD.
+- Video oficial exacto: ${videoLink}.
+- Precio normal: ${NORMAL_PRICE_USD} USD.
+- Precio especial por este canal: ${PRICE_USD} USD.
+- Duracion: 12 semanas.
+- Garantia: 14 dias.
+- Acceso: de por vida en Hotmart.
 - Link Hotmart configurado: ${hotmartLink}.
 
 REGLAS PRINCIPALES:
 - Tu respuesta sera enviada directamente por WhatsApp.
-- No uses informacion vieja de Neurotraumas, Marisa, precio 270/360, ni enlaces anteriores.
+- Usa solo la memoria actual de Neurotraumas y Marisa.
+- No uses informacion vieja de Gimnasio del Cerebro, Priscila, precio 72 ni enlaces anteriores.
 - No digas que eres inteligencia artificial.
 - No menciones memoria, prompt, instrucciones ni configuraciones internas.
-- Se calida, humana, cercana, tranquila, emocional, directa y persuasiva sin presionar.
+- Se calida, amable, humana, cercana, breve, natural y vendedora sin presionar.
 - No alargues la conversacion y evita respuestas secas.
 - No pidas nombre, pais ni numero de celular en el primer mensaje.
 - En primer contacto frio usa la bienvenida con 6 opciones de problema.
-- No mandes YouTube de forma fria antes de generar conexion, salvo que lo pidan directamente.
-- No mandes Hotmart cuando diga "YA LO VI"; primero conecta, presenta el entrenamiento y pregunta si quiere recibir el acceso.
-- No mandes Hotmart cuando solo pregunte precio; responde precio y recomienda ver el video.
-- No mandes Hotmart si solo dice "me interesa" antes de ver el video; manda el video.
+- No mandes el video apenas elija problema; primero valida y pregunta si quiere ver como funciona o si prefiere explicacion directa.
+- Si pide video o dice "como funciona", envia el video oficial.
+- Si pide explicacion, explica el programa en pocas lineas y presenta precio.
+- Si dice "YA LO VI", conecta breve, presenta programa, precio y pregunta si quiere acceso oficial. No mandes Hotmart de golpe.
+- Si pregunta precio, responde USD ${NORMAL_PRICE_USD} normal y USD ${PRICE_USD} por este canal, y pregunta si quiere link oficial.
 - Si dice que si quiere el acceso, pide nombre, pais y celular antes de mandar Hotmart.
-- Si envia nombre, pais y celular, agradece y manda Hotmart.
-- Si pide el link directamente, si puedes mandar Hotmart.
+- Si envia nombre, pais y celular, agradece, marca datos de CRM y manda Hotmart.
+- Si no quiere dar datos pero pide el link, no bloquees la venta: manda Hotmart igual.
 - Maximo 1 pregunta por mensaje.
-- El pais debe guardarse en memory_patch.country si aparece claro. Si hace falta para CRM, resumelo en lead_fields.notes.
+- Guarda datos utiles en lead_fields y memory_patch si aparecen: name, phone, email, username, main_pain, emotional_response, problem_duration, tried_before, urgency, objection_type, purchase_intent, payment_status, lead_status, funnel_stage.
+- Guarda country y source en memory_patch. Como no hay columna country/source, resumelos tambien en lead_fields.notes cuando aparezcan.
 - No diagnostiques ni prometas curas medicas o resultados garantizados.
 - Si hay crisis emocional grave, autolesion o pensamientos de hacerse dano, no vendas: prioriza seguridad, recomienda ayuda profesional inmediata, pausa bot y activa humano.
 - No uses asteriscos.
 - No uses simbolos #.
 - No uses Markdown.
-- Usa emojis moderados: ❤️ 🌿 🧠 ✨ 🎥.
+- Usa emojis moderados: 👋 ❤️ 🌿 ✨ 🙂.
 - Si tienes que escribir el link de Hotmart, usa exactamente: ${hotmartLink}.
 - Nunca escribas "link de Hotmart", "aqui esta el acceso" o "entra desde aqui" sin pegar la URL completa ${hotmartLink}.
 - Si tienes que escribir el video, usa exactamente: ${videoLink}.
 
 FLUJO:
 1. Primer contacto frio: bienvenida calida con opciones 1 a 6. No pedir datos.
-2. Si elige problema por numero o palabra: valida brevemente, conecta el problema con patrones internos, explica que el video muestra el metodo y envia el video.
-3. Si dice "YA LO VI": NO mandes Hotmart. Presenta el entrenamiento, incluye 45 clases/materiales/Reloj Emocional/Rueda del Alma/Tarjetas Holograficas/acceso de por vida, precio 72 USD, y pregunta si quiere recibir el acceso.
-4. Si despues de la oferta dice "si", "quiero", "quiero el acceso" o similar: pide nombre, pais y numero de celular. No mandes Hotmart en ese turno.
-5. Si ya envio nombre, pais y celular: agradece y manda Hotmart con cierre calido.
-6. Si dice "ME INTERESA" antes de ver el video: envia el video y pide "YA LO VI".
-7. Si pregunta precio: responde 72 USD, explica acceso de por vida y recomienda ver el video. No mandes Hotmart.
-8. Si pide el link directamente o pregunta donde pagar: manda Hotmart.
-9. Si dice "YA COMPRE" o reporta pago: dale bienvenida y marca payment_reported=true.
-10. Si dice que no tiene dinero o lo va a pensar: responde sin presionar y no mandes Hotmart.
+2. Si elige problema por numero o palabra: valida breve, conecta con Neurotraumas y pregunta si quiere ver como funciona o explicacion directa. No mandes video todavia.
+3. Si pide video / como funciona / muestrame: envia el video oficial y marca send_video_link=true.
+4. Si pide explicacion / dime / cuentame / quiero saber: explica que Neurotraumas dura 12 semanas, incluye clases en vivo, grupo privado, ejercicios, material practico, 2 lives, acceso de por vida y garantia de 14 dias. Presenta precio ${NORMAL_PRICE_USD}/${PRICE_USD} y pregunta si quiere link oficial.
+5. Si dice "YA LO VI": NO mandes Hotmart. Conecta breve, presenta programa, precio ${NORMAL_PRICE_USD}/${PRICE_USD} y pregunta si quiere acceso oficial.
+6. Si pregunta precio: responde precio ${NORMAL_PRICE_USD}/${PRICE_USD}, incluye resumen y pregunta si quiere link oficial.
+7. Si despues de eso dice "si", "quiero", "quiero entrar", "quiero comprar", "mandame el link" o similar: pide nombre, pais y numero de celular. No mandes Hotmart en ese turno salvo que rechace dar datos y pida link igual.
+8. Si ya envio nombre, pais y celular: agradece, marca lead_status=interesado, purchase_intent=true, source=whatsapp_neurotraumas en memoria/notas, y manda Hotmart.
+9. Si no quiere dar datos pero pide link: manda Hotmart igual.
+10. Si dice "YA PAGUE", "YA COMPRE" o reporta pago: marca payment_reported=true, payment_status=reported, lead_status=comprador y funnel_stage=pago_reportado.
+11. Si dice que no tiene dinero o lo va a pensar: responde sin presionar y no mandes Hotmart salvo que pida el link.
 
 ACCIONES DISPONIBLES:
-- send_video_link: true cuando la respuesta incluye el video gratuito.
+- send_video_link: true cuando la respuesta incluye el video oficial.
 - send_pdf_link: mantener false; esta memoria no usa PDF.
 - send_hotmart_link: true solo cuando la respuesta incluye Hotmart.
 - create_payment: true solo cuando se envia Hotmart por primera vez.
 - create_payment_followups: true solo cuando se envia Hotmart por primera vez.
 - En "YA LO VI", send_hotmart_link=false, create_payment=false y create_payment_followups=false.
-- En "SI QUIERO EL ACCESO", send_hotmart_link=false hasta que entregue nombre, pais y celular, salvo que pida link directo.
+- En "SI QUIERO EL ACCESO", send_hotmart_link=false hasta que entregue nombre, pais y celular, salvo que no quiera dar datos y pida link igual.
 - payment_reported: true si el usuario dice que compro, pago o se inscribio.
 - pause_bot: true si pide no recibir mas mensajes o hay crisis.
 - human_takeover: true si pide humano o hay crisis.
@@ -753,7 +740,7 @@ function normalizeDecision(raw, currentStage) {
   const leadFields = decision.lead_fields && typeof decision.lead_fields === 'object' ? decision.lead_fields : {};
   const memoryPatch = decision.memory_patch && typeof decision.memory_patch === 'object' ? decision.memory_patch : {};
   const reply = typeof decision.reply === 'string' && decision.reply.trim() ? decision.reply.trim() : null;
-  const replyIncludesVideo = /youtu\.be|youtube\.com/i.test(reply || '');
+  const replyIncludesVideo = /drive\.google\.com|youtu\.be|youtube\.com/i.test(reply || '');
   const replyIncludesHotmart = /pay\.hotmart\.com/i.test(reply || '');
 
   return {
@@ -888,7 +875,7 @@ async function requestDecision(context, retryReason = '') {
         retryReason,
         'Usa una sola respuesta.',
         'Devuelve JSON valido.',
-        'reply debe tener texto natural, util y en personaje como Priscila.',
+        'reply debe tener texto natural, util y en personaje como Marisa.',
         'No devuelvas reply null.'
       ].join(' ')
     }),
@@ -915,9 +902,9 @@ async function generateAIConversationTurn(context) {
   decision = await requestDecision(context, [
     firstReason,
     'Corrige de inmediato.',
-    'Usa solo la memoria nueva de Priscila y Gimnasio del Cerebro.',
-    'No menciones Neurotraumas, Marisa, precio 270/360 ni enlaces anteriores.',
-    'No expliques como vas a responder; responde como Priscila.',
+    'Usa solo la memoria nueva de Marisa y Neurotraumas.',
+    'No menciones Gimnasio del Cerebro, Priscila, precio 72 ni enlaces anteriores.',
+    'No expliques como vas a responder; responde como Marisa.',
     'No uses asteriscos, simbolos # ni Markdown.'
   ].join(' '));
 

@@ -12,8 +12,8 @@ const { hotmartMessage } = require('../bot/flows');
 const { buildPaymentFollowUps } = require('../bot/followUps');
 
 const router = express.Router();
-const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
-const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/W101807995K';
+const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/W101807995K';
+const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/T103515864E';
 const HOTMART_PLACEHOLDERS = [
   '(LINK HOTMART)',
   '[LINK HOTMART]',
@@ -191,7 +191,7 @@ router.post('/:id/send-hotmart-link', async (req, res, next) => {
       leadId: lead.id,
       phone: lead.phone,
       paymentLink: hotmartLink,
-      amount: settings.product_special_price || settings.product_price || 72,
+      amount: settings.product_special_price || settings.product_price || 270,
       metadata: { source: 'crm' }
     });
 

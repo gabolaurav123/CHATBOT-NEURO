@@ -31,18 +31,18 @@ Configura estas variables en el panel de Seenode:
 ```env
 DATABASE_URL=
 ADMIN_API_KEY=
-CRM_SECTION=holografica
+CRM_SECTION=neurotraumas
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.4-mini
 OPENAI_MAX_OUTPUT_TOKENS=700
-BOT_NAME=Priscila
-PRODUCT_NAME=Gimnasio del Cerebro
-HOTMART_LINK=https://pay.hotmart.com/W101807995K
-VIDEO_LINK=https://youtu.be/btHy8kSC4E4
+BOT_NAME=Marisa
+PRODUCT_NAME=Neurotraumas
+HOTMART_LINK=https://pay.hotmart.com/T103515864E
+VIDEO_LINK=https://drive.google.com/file/d/1gpukjlEwfQMXHN8LD_GN2-IEncwZ3wFy/view?usp=drive_link
 PDF_LINK=
-PRODUCT_NORMAL_PRICE=72
-PRODUCT_SPECIAL_PRICE=72
-PRODUCT_PRICE=72
+PRODUCT_NORMAL_PRICE=360
+PRODUCT_SPECIAL_PRICE=270
+PRODUCT_PRICE=270
 WHATSAPP_SESSION_PATH=.baileys_auth
 PORT=80
 NODE_ENV=production
