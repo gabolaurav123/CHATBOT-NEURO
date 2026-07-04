@@ -3,6 +3,8 @@ const PRODUCT_NAME = 'Neurotraumas';
 const VIDEO_LINK = 'https://drive.google.com/file/d/1gpukjlEwfQMXHN8LD_GN2-IEncwZ3wFy/view?usp=drive_link';
 const NORMAL_PRICE_USD = '360';
 const PRICE_USD = '270';
+const PROGRAM_START = '28 de julio a las 14:00, horario argentino';
+const GUARANTEE_DAYS = '7';
 const HOTMART_PLACEHOLDER = 'https://pay.hotmart.com/T103515864E';
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/W101807995K';
 const LEGACY_VIDEO_LINK = 'https://youtu.be/btHy8kSC4E4';
@@ -14,6 +16,19 @@ const HOTMART_PLACEHOLDERS = [
   '[HOTMART_LINK]',
   'HOTMART_LINK'
 ];
+
+const PROGRAM_MODULES = [
+  '1. Que es el trauma',
+  '2. El cerebro reptil',
+  '3. El cerebro y el trauma',
+  '4. Herramientas aplicadas al trauma',
+  '5. Desensibilizacion del trauma',
+  '6. Casos reales y plan de accion'
+];
+
+function programModulesText() {
+  return PROGRAM_MODULES.join('\n');
+}
 
 function withName(lead, fallback = '') {
   return lead && lead.name ? lead.name : fallback;
@@ -159,7 +174,12 @@ function programIntroMessage() {
 
 Entonces ya viste que no se trata solo de fuerza de voluntad, sino de trabajar los patrones que estan detras de lo que repetimos.
 
-${PRODUCT_NAME} es un proceso de 12 semanas con clases en vivo, ejercicios, acompanamiento y herramientas practicas 🌿
+${PRODUCT_NAME} es un plan de entrenamiento de 12 semanas. Inicia el ${PROGRAM_START}.
+
+Esta dividido en 6 partes:
+${programModulesText()}
+
+Incluye clases en vivo, grupo privado de acompanamiento, material practico, ejercicios guiados, acceso de por vida y garantia de ${GUARANTEE_DAYS} dias 🌿
 
 El valor normal es USD ${NORMAL_PRICE_USD}, pero por este canal queda en USD ${PRICE_USD}.
 
@@ -174,9 +194,12 @@ function offerMessage(settings = {}, lead = null) {
 
 Entonces ya viste que no se trata solo de fuerza de voluntad, sino de trabajar los patrones que estan detras de lo que repetimos.
 
-${PRODUCT_NAME} es un programa de 12 semanas para trabajar ansiedad, miedos, autosabotaje, bloqueos, heridas emocionales y cargas del pasado.
+${PRODUCT_NAME} es un plan de entrenamiento de 12 semanas para trabajar ansiedad, miedos, autosabotaje, bloqueos, heridas emocionales y cargas del pasado. Inicia el ${PROGRAM_START}.
 
-Incluye clases en vivo, grupo privado, ejercicios, material practico, 2 lives de seguimiento, acceso de por vida y garantia de 14 dias 🌿
+Esta dividido en 6 partes:
+${programModulesText()}
+
+Incluye clases en vivo, grupo privado de acompanamiento, material practico, ejercicios guiados, acceso de por vida y garantia de ${GUARANTEE_DAYS} dias 🌿
 
 El valor normal es USD ${normal}, pero por este canal queda en USD ${special}.
 
@@ -189,16 +212,19 @@ function priceOnlyMessage(settings = {}) {
 
 Por este canal queda en USD ${special}.
 
-Incluye el programa completo de 12 semanas, acompanamiento, ejercicios, acceso de por vida y garantia de 14 dias 🌿
+Incluye el programa completo de 12 semanas, acompanamiento, ejercicios, acceso de por vida y garantia de ${GUARANTEE_DAYS} dias 🌿
 
 Quieres que te pase el link oficial?`;
 }
 
 function summaryMessage(settings = {}) {
   const { normal, special } = prices(settings);
-  return `${PRODUCT_NAME} es un programa de 12 semanas para trabajar ansiedad, miedos, autosabotaje, bloqueos, heridas emocionales y cargas del pasado.
+  return `${PRODUCT_NAME} es un plan de entrenamiento de 12 semanas para trabajar ansiedad, miedos, autosabotaje, bloqueos, heridas emocionales y cargas del pasado. Inicia el ${PROGRAM_START}.
 
-Incluye clases en vivo, grupo privado, ejercicios, material practico, 2 lives de seguimiento, acceso de por vida y garantia de 14 dias.
+Esta dividido en 6 partes:
+${programModulesText()}
+
+Incluye clases en vivo, grupo privado de acompanamiento, material practico, ejercicios guiados, acceso de por vida y garantia de ${GUARANTEE_DAYS} dias.
 
 El valor normal es USD ${normal}, pero por este canal queda en USD ${special}.`;
 }
@@ -224,7 +250,7 @@ Te dejo el acceso oficial por Hotmart:
 
 ${link}
 
-Ahi puedes hacer tu inscripcion con el precio especial de USD ${special} y garantia de 14 dias 🌿
+Ahi puedes hacer tu inscripcion con el precio especial de USD ${special} y garantia de ${GUARANTEE_DAYS} dias 🌿
 
 Cuando completes tu inscripcion, escribime "ya pague" y te ayudo con el siguiente paso.`;
 }
@@ -240,7 +266,7 @@ Cuanto te esta costando seguir con el mismo problema?
 
 A veces el costo de no trabajar nuestros patrones termina siendo mas alto que la inversion.
 
-El programa queda en USD ${PRICE_USD} por este canal y tiene garantia de 14 dias.`,
+El programa queda en USD ${PRICE_USD} por este canal y tiene garantia de ${GUARANTEE_DAYS} dias.`,
 
   tiempo: `Te entiendo ❤️
 

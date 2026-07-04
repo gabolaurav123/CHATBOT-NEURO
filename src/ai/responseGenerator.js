@@ -6,6 +6,8 @@ const PRODUCT_NAME = 'Neurotraumas';
 const VIDEO_LINK = 'https://drive.google.com/file/d/1gpukjlEwfQMXHN8LD_GN2-IEncwZ3wFy/view?usp=drive_link';
 const NORMAL_PRICE_USD = '360';
 const PRICE_USD = '270';
+const PROGRAM_START = '28 de julio a las 14:00, horario argentino';
+const GUARANTEE_DAYS = '7';
 const HOTMART_LINK = 'https://pay.hotmart.com/T103515864E';
 const HOTMART_PLACEHOLDER = HOTMART_LINK;
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/W101807995K';
@@ -34,6 +36,15 @@ const VALID_STAGES = [
   'humano',
   'pausado',
   'cierre_frio'
+];
+
+const PROGRAM_MODULES = [
+  '1. Que es el trauma',
+  '2. El cerebro reptil',
+  '3. El cerebro y el trauma',
+  '4. Herramientas aplicadas al trauma',
+  '5. Desensibilizacion del trauma',
+  '6. Casos reales y plan de accion'
 ];
 
 function normalizeText(value) {
@@ -159,7 +170,7 @@ function isPrematurePaymentDump(reply, context = {}) {
 
 function hasHotmartLink(reply) {
   const text = normalizeText(reply);
-  return /hotmart|pay\.hotmart|link de pago|\(link hotmart\)|entras desde aqui|podes entrar desde aqui/.test(text);
+  return /pay\.hotmart|link de pago|\(link hotmart\)|entras desde aqui|podes entrar desde aqui|te (dejo|paso).*(acceso|link|hotmart)|este es el acceso|acceso oficial por hotmart/.test(text);
 }
 
 function hasVideoLink(reply) {
@@ -186,6 +197,12 @@ function isPriceQuestionOnly(message) {
 function wantsDirectPaymentLink(message) {
   const text = normalizeText(message);
   return /(link directo|pasame el link|mandame el link|enviame el link|quiero el link|link de pago|donde pago|quiero pagar|pagar ahora|hacer el pago)/.test(text);
+}
+
+function isProgramDetailsQuestion(message) {
+  const text = normalizeText(message);
+  return /(programa|temario|contenido|modulo|modulos|que incluye|de que trata|como es|cuanto dura|duracion|plan de entrenamiento|partes|clases)/.test(text)
+    && !wantsDirectPaymentLink(message);
 }
 
 function refusesToShareData(message) {
@@ -227,6 +244,17 @@ function sentHotmartTooEarly(decision, context = {}) {
   }
 
   return false;
+}
+
+function sentHotmartOnProgramDetails(decision, context = {}) {
+  if (!isProgramDetailsQuestion(context.userMessage)) return false;
+
+  const reply = decision && decision.reply;
+  const actions = (decision && decision.actions) || {};
+  return /pay\.hotmart\.com|link de pago|\(link hotmart\)|te (dejo|paso).*(acceso|link|hotmart)|este es el acceso|aqui.*(acceso|link)/i.test(String(reply || ''))
+    || actions.send_hotmart_link
+    || actions.create_payment
+    || actions.create_payment_followups;
 }
 
 function problemChoiceSentVideoTooEarly(decision, context = {}) {
@@ -319,7 +347,29 @@ function postVideoOfferReply() {
     '',
     'Entonces ya viste que no se trata solo de fuerza de voluntad, sino de trabajar los patrones que estan detras de lo que repetimos.',
     '',
-    `${PRODUCT_NAME} es un proceso de 12 semanas con clases en vivo, ejercicios, acompanamiento y herramientas practicas 🌿`,
+    `${PRODUCT_NAME} es un plan de entrenamiento de 12 semanas. Inicia el ${PROGRAM_START}.`,
+    '',
+    'Esta dividido en 6 partes:',
+    ...PROGRAM_MODULES,
+    '',
+    `Incluye clases en vivo, grupo privado de acompanamiento, material practico, ejercicios guiados, acceso de por vida en Hotmart y garantia de ${GUARANTEE_DAYS} dias 🌿`,
+    '',
+    `El valor normal es USD ${NORMAL_PRICE_USD}, pero por este canal queda en USD ${PRICE_USD}.`,
+    '',
+    'Quieres que te pase el acceso oficial?'
+  ].join('\n');
+}
+
+function programDetailsReply() {
+  return [
+    'Claro ❤️',
+    '',
+    `${PRODUCT_NAME} es un plan de entrenamiento de 12 semanas. Inicia el ${PROGRAM_START}.`,
+    '',
+    'Esta dividido en 6 partes:',
+    ...PROGRAM_MODULES,
+    '',
+    `Tambien incluye clases en vivo, grupo privado de acompanamiento, material practico, ejercicios guiados, acceso de por vida en Hotmart y garantia de ${GUARANTEE_DAYS} dias 🌿`,
     '',
     `El valor normal es USD ${NORMAL_PRICE_USD}, pero por este canal queda en USD ${PRICE_USD}.`,
     '',
@@ -350,7 +400,7 @@ function directLinkReply(settings = {}) {
     '',
     link,
     '',
-    `Ahi puedes hacer tu inscripcion con el precio especial de USD ${PRICE_USD} y garantia de 14 dias 🌿`,
+    `Ahi puedes hacer tu inscripcion con el precio especial de USD ${PRICE_USD} y garantia de ${GUARANTEE_DAYS} dias 🌿`,
     '',
     'Si decides entrar, escribime "ya pague" y te ayudo con el siguiente paso.'
   ].join('\n');
@@ -371,6 +421,8 @@ function replaceHotmartPlaceholders(reply, link) {
 }
 
 function shouldForceHotmartUrl(decision, context = {}) {
+  if (isProgramDetailsQuestion(context.userMessage)) return false;
+
   const actions = (decision && decision.actions) || {};
   const reply = String((decision && decision.reply) || '');
   const text = normalizeText(reply);
@@ -380,7 +432,7 @@ function shouldForceHotmartUrl(decision, context = {}) {
     || actions.create_payment
     || actions.create_payment_followups
     || (wantsDirectPaymentLink(context.userMessage) && refusesToShareData(context.userMessage))
-    || /te dejo.*(acceso|link)|aqui.*(acceso|link)|hotmart|link de pago|donde pago|pagar/.test(text)
+    || /te (dejo|paso).*(acceso|link|hotmart)|aqui.*(acceso|link)|este es el acceso|acceso oficial por hotmart|link de pago|donde pago|pagar/.test(text)
   );
 }
 
@@ -418,6 +470,7 @@ function badDecisionReason(decision, context) {
   if (isOverloadedFirstContact(decision.reply, context)) return 'Primer contacto corregido: no pidas nombre, pais ni celular, y no mandes video, precio ni Hotmart en el primer mensaje.';
   if (isPrematurePaymentDump(decision.reply, context)) return 'En primer contacto frio no mandes precio ni Hotmart antes de pedir datos y problema, salvo que el usuario lo pida.';
   if (problemChoiceSentVideoTooEarly(decision, context)) return 'La persona ya eligio un problema. Valida brevemente, conecta con Neurotraumas y pregunta si quiere ver como funciona o si prefiere explicacion directa. No mandes video todavia.';
+  if (sentHotmartOnProgramDetails(decision, context)) return 'Si pregunta por el programa, temario, contenido o que incluye, explica las 6 partes, fecha de inicio, precio y garantia. No mandes Hotmart en ese turno.';
   if (sentHotmartTooEarly(decision, context)) return 'No mandes Hotmart todavia. Si dijo YA LO VI, presenta el entrenamiento y pregunta si quiere el acceso. Si solo dijo SI al acceso, pide nombre, pais y celular. Si pregunto precio o dijo me interesa antes del video, manda el video y no Hotmart.';
   return null;
 }
@@ -441,6 +494,7 @@ function fallbackGenericDecision(context = {}) {
   const viewedVideo = isViewedVideoMessage(context.userMessage);
   const wantsAccess = isAskingForAccessAfterOffer(context);
   const directPaymentLink = wantsDirectPaymentLink(context.userMessage);
+  const programDetails = isProgramDetailsQuestion(context.userMessage);
   const priceOnly = isPriceQuestionOnly(context.userMessage);
   const interestBeforeVideo = isInterestBeforeVideo(context.userMessage) && !(context.lead && context.lead.video_sent);
 
@@ -508,6 +562,20 @@ function fallbackGenericDecision(context = {}) {
     };
   }
 
+  if (programDetails) {
+    return {
+      reply: programDetailsReply(),
+      next_stage: 'oferta_presentada',
+      lead_fields: {
+        funnel_stage: 'oferta_presentada'
+      },
+      memory_patch: {
+        last_intent: 'program_details'
+      },
+      actions: emptyActions()
+    };
+  }
+
   if (problem || interestBeforeVideo || priceOnly) {
     const reply = priceOnly
       ? [
@@ -515,7 +583,7 @@ function fallbackGenericDecision(context = {}) {
         '',
         `Por este canal queda en USD ${PRICE_USD}.`,
         '',
-        'Incluye el programa completo de 12 semanas, acompanamiento, ejercicios, acceso de por vida y garantia de 14 dias 🌿',
+        `Incluye el programa completo de 12 semanas, acompanamiento, ejercicios, acceso de por vida y garantia de ${GUARANTEE_DAYS} dias 🌿`,
         '',
         'Quieres que te pase el link oficial?'
       ].join('\n')
@@ -630,7 +698,9 @@ MEMORIA ACTIVA Y UNICA:
 - Precio normal: ${NORMAL_PRICE_USD} USD.
 - Precio especial por este canal: ${PRICE_USD} USD.
 - Duracion: 12 semanas.
-- Garantia: 14 dias.
+- Inicio: ${PROGRAM_START}.
+- Partes del programa: ${PROGRAM_MODULES.join('; ')}.
+- Garantia: ${GUARANTEE_DAYS} dias.
 - Acceso: de por vida en Hotmart.
 - Link Hotmart configurado: ${hotmartLink}.
 
@@ -646,7 +716,7 @@ REGLAS PRINCIPALES:
 - En primer contacto frio usa la bienvenida con 6 opciones de problema.
 - No mandes el video apenas elija problema; primero valida y pregunta si quiere ver como funciona o si prefiere explicacion directa.
 - Si pide video o dice "como funciona", envia el video oficial.
-- Si pide explicacion, explica el programa en pocas lineas y presenta precio.
+- Si pide explicacion, programa, temario, contenido o que incluye, explica las 6 partes, fecha de inicio, precio y garantia. No mandes Hotmart en ese turno.
 - Si dice "YA LO VI", conecta breve, presenta programa, precio y pregunta si quiere acceso oficial. No mandes Hotmart de golpe.
 - Si pregunta precio, responde USD ${NORMAL_PRICE_USD} normal y USD ${PRICE_USD} por este canal, y pregunta si quiere link oficial.
 - Si dice que si quiere el acceso, pide nombre, pais y celular antes de mandar Hotmart.
@@ -669,7 +739,7 @@ FLUJO:
 1. Primer contacto frio: bienvenida calida con opciones 1 a 6. No pedir datos.
 2. Si elige problema por numero o palabra: valida breve, conecta con Neurotraumas y pregunta si quiere ver como funciona o explicacion directa. No mandes video todavia.
 3. Si pide video / como funciona / muestrame: envia el video oficial y marca send_video_link=true.
-4. Si pide explicacion / dime / cuentame / quiero saber: explica que Neurotraumas dura 12 semanas, incluye clases en vivo, grupo privado, ejercicios, material practico, 2 lives, acceso de por vida y garantia de 14 dias. Presenta precio ${NORMAL_PRICE_USD}/${PRICE_USD} y pregunta si quiere link oficial.
+4. Si pide explicacion / programa / temario / contenido / que incluye / dime / cuentame / quiero saber: explica que Neurotraumas dura 12 semanas, inicia el ${PROGRAM_START}, y se divide en estas 6 partes: ${PROGRAM_MODULES.join('; ')}. Incluye clases en vivo, grupo privado, ejercicios, material practico, acceso de por vida y garantia de ${GUARANTEE_DAYS} dias. Presenta precio ${NORMAL_PRICE_USD}/${PRICE_USD} y pregunta si quiere acceso oficial, sin mandar Hotmart.
 5. Si dice "YA LO VI": NO mandes Hotmart. Conecta breve, presenta programa, precio ${NORMAL_PRICE_USD}/${PRICE_USD} y pregunta si quiere acceso oficial.
 6. Si pregunta precio: responde precio ${NORMAL_PRICE_USD}/${PRICE_USD}, incluye resumen y pregunta si quiere link oficial.
 7. Si despues de eso dice "si", "quiero", "quiero entrar", "quiero comprar", "mandame el link" o similar: pide nombre, pais y numero de celular. No mandes Hotmart en ese turno salvo que rechace dar datos y pida link igual.

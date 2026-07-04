@@ -63,7 +63,7 @@ function paymentFollowUp3(hotmartLink) {
 
   return `No quiero presionarte ❤️
 
-Solo recordarte que Neurotraumas queda en USD 270 por este canal, con acceso de por vida y garantia de 14 dias.
+Solo recordarte que Neurotraumas queda en USD 270 por este canal, con acceso de por vida y garantia de 7 dias.
 
 Si sentis que ya es momento, entras desde aqui:
 
