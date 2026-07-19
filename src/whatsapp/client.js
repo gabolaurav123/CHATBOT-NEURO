@@ -10,7 +10,17 @@ const { env } = require('../config/env');
 const { logger } = require('../utils/logger');
 const { normalizePhone, toWhatsAppId } = require('../utils/normalizePhone');
 const { qrToDataUrl } = require('./qr');
-const { updateSessionSnapshot, clearQr, getLatestSession } = require('./session');
+const {
+  updateSessionSnapshot,
+  clearQr,
+  getLatestSession,
+  hasAuthState
+} = require('./session');
+const {
+  backupAuthDirectory,
+  restoreAuthDirectory,
+  clearPersistedAuth
+} = require('./authBackup');
 
 class WhatsAppClientManager extends EventEmitter {
   constructor() {
@@ -22,6 +32,7 @@ class WhatsAppClientManager extends EventEmitter {
     this.messageHandler = null;
     this.initializing = false;
     this.manualClose = false;
+    this.authBackupChain = Promise.resolve();
   }
 
   async initialize(messageHandler, { force = false } = {}) {
@@ -41,7 +52,22 @@ class WhatsAppClientManager extends EventEmitter {
     this.status = 'initializing';
     await updateSessionSnapshot({ status: this.status, sessionInfo: { reason: 'initialize', provider: 'baileys' } });
 
+    try {
+      const restored = await restoreAuthDirectory(env.WHATSAPP_SESSION_PATH);
+      if (restored) {
+        logger.info('WhatsApp auth session restored from PostgreSQL');
+      }
+    } catch (error) {
+      logger.error('WhatsApp auth session restore failed', { error: error.message });
+    }
+
     const { state, saveCreds } = await useMultiFileAuthState(env.WHATSAPP_SESSION_PATH);
+
+    const originalKeysSet = state.keys.set.bind(state.keys);
+    state.keys.set = async (data) => {
+      await originalKeysSet(data);
+      await this.queueAuthBackup();
+    };
 
     const client = makeWASocket({
       auth: state,
@@ -51,7 +77,14 @@ class WhatsAppClientManager extends EventEmitter {
       markOnlineOnConnect: false
     });
 
-    client.ev.on('creds.update', saveCreds);
+    client.ev.on('creds.update', async () => {
+      try {
+        await saveCreds();
+        await this.queueAuthBackup();
+      } catch (error) {
+        logger.error('WhatsApp credentials update failed', { error: error.message });
+      }
+    });
 
     client.ev.on('connection.update', async (update) => {
       await this.handleConnectionUpdate(update);
@@ -102,6 +135,7 @@ class WhatsAppClientManager extends EventEmitter {
           user: this.client && this.client.user
         }
       });
+      await this.queueAuthBackup();
       this.emit('ready');
       logger.info('WhatsApp connected with Baileys', { connectedPhone: this.connectedPhone });
     }
@@ -129,6 +163,12 @@ class WhatsAppClientManager extends EventEmitter {
       });
 
       logger.warn('WhatsApp disconnected', { statusCode });
+
+      if (statusCode === DisconnectReason.loggedOut) {
+        await this.waitForAuthBackup();
+        await fs.remove(env.WHATSAPP_SESSION_PATH);
+        await clearPersistedAuth();
+      }
 
       if (!this.manualClose && statusCode !== DisconnectReason.loggedOut) {
         setTimeout(() => {
@@ -162,6 +202,7 @@ class WhatsAppClientManager extends EventEmitter {
     this.manualClose = true;
     await this.destroyClient();
     await fs.remove(env.WHATSAPP_SESSION_PATH);
+    await clearPersistedAuth();
     this.manualClose = false;
     this.qr = null;
     this.connectedPhone = null;
@@ -191,6 +232,7 @@ class WhatsAppClientManager extends EventEmitter {
 
     await this.destroyClient();
     await fs.remove(env.WHATSAPP_SESSION_PATH);
+    await clearPersistedAuth();
     this.status = 'disconnected';
     this.qr = null;
     this.connectedPhone = null;
@@ -207,6 +249,7 @@ class WhatsAppClientManager extends EventEmitter {
   }
 
   async destroyClient() {
+    await this.waitForAuthBackup();
     if (!this.client) return;
 
     this.manualClose = true;
@@ -231,6 +274,22 @@ class WhatsAppClientManager extends EventEmitter {
     this.initializing = false;
   }
 
+  async queueAuthBackup() {
+    this.authBackupChain = this.authBackupChain
+      .catch(() => undefined)
+      .then(() => backupAuthDirectory(env.WHATSAPP_SESSION_PATH))
+      .catch((error) => {
+        logger.error('WhatsApp auth backup failed', { error: error.message });
+        return false;
+      });
+
+    return this.authBackupChain;
+  }
+
+  async waitForAuthBackup() {
+    await this.authBackupChain.catch(() => undefined);
+  }
+
   async sendMessage(phoneOrChatId, message) {
     if (!this.client || this.status !== 'connected') {
       throw new Error('WhatsApp client is not connected');
@@ -247,6 +306,7 @@ class WhatsAppClientManager extends EventEmitter {
 
   async getStatus() {
     const latest = await getLatestSession();
+    const persistedAuth = await hasAuthState();
     const latestStatus = latest && latest.status;
     const status = this.status !== 'disconnected' ? this.status : latestStatus || 'disconnected';
 
@@ -255,7 +315,9 @@ class WhatsAppClientManager extends EventEmitter {
       connectedPhone: this.connectedPhone || (latest && latest.connected_phone) || null,
       lastConnectedAt: latest && latest.last_connected_at,
       lastQrAt: latest && latest.last_qr_at,
-      lastDisconnectedAt: latest && latest.last_disconnected_at
+      lastDisconnectedAt: latest && latest.last_disconnected_at,
+      authPersistence: 'database',
+      authBackupAvailable: Boolean(persistedAuth)
     };
   }
 

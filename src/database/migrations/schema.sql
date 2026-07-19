@@ -135,6 +135,8 @@ CREATE TABLE IF NOT EXISTS whatsapp_sessions (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+ALTER TABLE whatsapp_sessions ADD COLUMN IF NOT EXISTS auth_state JSONB;
+
 CREATE TABLE IF NOT EXISTS payments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,

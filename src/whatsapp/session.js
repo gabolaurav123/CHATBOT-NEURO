@@ -92,8 +92,72 @@ async function clearQr() {
   return result.rows[0] || null;
 }
 
+async function getLatestAuthState() {
+  const result = await query(
+    `SELECT auth_state
+     FROM whatsapp_sessions
+     WHERE auth_state IS NOT NULL
+     ORDER BY updated_at DESC, created_at DESC
+     LIMIT 1`
+  );
+
+  return (result.rows[0] && result.rows[0].auth_state) || null;
+}
+
+async function hasAuthState() {
+  const result = await query(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM whatsapp_sessions
+       WHERE auth_state IS NOT NULL
+     ) AS available`
+  );
+
+  return Boolean(result.rows[0] && result.rows[0].available);
+}
+
+async function saveAuthState(authState) {
+  const latest = await getLatestSession();
+
+  if (!latest) {
+    const result = await query(
+      `INSERT INTO whatsapp_sessions (status, session_info, auth_state)
+       VALUES ('initializing', $1::jsonb, $2::jsonb)
+       RETURNING auth_state`,
+      [
+        JSON.stringify({ reason: 'auth-backup', provider: 'baileys' }),
+        JSON.stringify(authState)
+      ]
+    );
+
+    return result.rows[0] && result.rows[0].auth_state;
+  }
+
+  const result = await query(
+    `UPDATE whatsapp_sessions
+     SET auth_state = $1::jsonb
+     WHERE id = $2
+     RETURNING auth_state`,
+    [JSON.stringify(authState), latest.id]
+  );
+
+  return result.rows[0] && result.rows[0].auth_state;
+}
+
+async function clearAuthState() {
+  await query(
+    `UPDATE whatsapp_sessions
+     SET auth_state = NULL
+     WHERE auth_state IS NOT NULL`
+  );
+}
+
 module.exports = {
   getLatestSession,
   updateSessionSnapshot,
-  clearQr
+  clearQr,
+  getLatestAuthState,
+  hasAuthState,
+  saveAuthState,
+  clearAuthState
 };
