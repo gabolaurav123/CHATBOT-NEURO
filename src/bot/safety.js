@@ -7,7 +7,12 @@ const CRISIS_PATTERNS = [
   /hacerme daño/i,
   /hacerme dano/i,
   /autolesi[oó]n/i,
-  /crisis fuerte/i
+  /crisis fuerte/i,
+  /estoy en peligro/i,
+  /peligro inmediato/i,
+  /me (pega|golpea|amenaza)/i,
+  /violencia (actual|ahora|en casa)/i,
+  /abuso (grave|sexual|fisico|físico)/i
 ];
 
 function detectCrisis(message) {

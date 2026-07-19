@@ -44,7 +44,11 @@ async function seedDefaultSettings() {
     ['pdf_link', env.PDF_LINK],
     ['hotmart_link', env.HOTMART_LINK],
     ['openai_model', env.OPENAI_MODEL],
-    ['openai_max_output_tokens', String(env.OPENAI_MAX_OUTPUT_TOKENS)]
+    ['openai_max_output_tokens', String(env.OPENAI_MAX_OUTPUT_TOKENS)],
+    ['holograficas_product_name', env.HOLOGRAFICAS_PRODUCT_NAME],
+    ['holograficas_price', String(env.HOLOGRAFICAS_PRICE)],
+    ['holograficas_video_link', env.HOLOGRAFICAS_VIDEO_LINK],
+    ['holograficas_hotmart_link', env.HOLOGRAFICAS_HOTMART_LINK]
   ];
 
   for (const [key, value] of settings) {

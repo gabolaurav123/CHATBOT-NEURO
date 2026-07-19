@@ -113,6 +113,39 @@ function buildPaymentFollowUps(lead, hotmartLink) {
   ];
 }
 
+function buildHolograficasPaymentFollowUps(hotmartLink) {
+  const now = new Date();
+  const link = hotmartLink || env.HOLOGRAFICAS_HOTMART_LINK;
+  return [
+    {
+      type: 'holograficas_payment_24h',
+      scheduledAt: addHours(now, 24),
+      message: `Hola ❤️
+Solo quería dejarte algo para pensar.
+
+¿Cuánto tiempo más querés seguir intentando cambiar desde el mismo lugar?
+
+A veces una sola decisión puede cambiar años de repetición 🌿
+
+Te dejo nuevamente el acceso cuando lo sientas:
+${link}`
+    },
+    {
+      type: 'holograficas_payment_48h',
+      scheduledAt: addHours(now, 48),
+      message: `Hay personas que compran cursos.
+Y hay personas que toman decisiones ❤️
+
+No porque no tengan miedo, sino porque están cansadas de seguir esperando.
+
+Si sentís que este entrenamiento es para vos, te espero dentro 🌿
+
+${link}`
+    }
+  ];
+}
+
 module.exports = {
-  buildPaymentFollowUps
+  buildPaymentFollowUps,
+  buildHolograficasPaymentFollowUps
 };

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "build": "node scripts/check-syntax.js"
+    "build": "node scripts/check-syntax.js",
+    "test": "node --test"
   },
   "keywords": [
     "whatsapp",

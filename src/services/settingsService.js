@@ -77,7 +77,11 @@ async function getRuntimeSettings() {
     pdf_link: settings.pdf_link || env.PDF_LINK,
     hotmart_link: activeTextSetting(settings.hotmart_link, DEFAULT_HOTMART_LINK, [LEGACY_HOTMART_LINK, ...HOTMART_PLACEHOLDERS]),
     openai_model: settings.openai_model || env.OPENAI_MODEL,
-    openai_max_output_tokens: settings.openai_max_output_tokens || String(env.OPENAI_MAX_OUTPUT_TOKENS)
+    openai_max_output_tokens: settings.openai_max_output_tokens || String(env.OPENAI_MAX_OUTPUT_TOKENS),
+    holograficas_product_name: settings.holograficas_product_name || env.HOLOGRAFICAS_PRODUCT_NAME,
+    holograficas_price: settings.holograficas_price || String(env.HOLOGRAFICAS_PRICE),
+    holograficas_video_link: settings.holograficas_video_link || env.HOLOGRAFICAS_VIDEO_LINK,
+    holograficas_hotmart_link: settings.holograficas_hotmart_link || env.HOLOGRAFICAS_HOTMART_LINK
   };
 }
 

@@ -23,9 +23,14 @@ const HOTMART_PLACEHOLDERS = [
 
 const VALID_STAGES = [
   'inicio',
+  'seleccion_plan',
+  'plan_seleccionado',
   'captacion',
+  'video_enviado',
+  'post_video',
   'diagnostico',
   'datos_solicitados',
+  'datos_recibidos',
   'oferta_presentada',
   'objecion',
   'link_pago_enviado',

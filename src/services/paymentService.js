@@ -103,6 +103,11 @@ async function markLeadPaid(leadId) {
     [leadId]
   );
 
+  await query(
+    `UPDATE followups SET status = 'cancelled' WHERE lead_id = $1 AND status = 'pending'`,
+    [leadId]
+  );
+
   return payment.rows[0] || null;
 }
 
@@ -119,9 +124,15 @@ async function reportPaymentByUser({ leadId, phone, paymentLink, amount, metadat
     [leadId, paymentLink || null, JSON.stringify(metadata)]
   );
 
-  if (updated.rows[0]) return updated.rows[0];
+  if (updated.rows[0]) {
+    await query(
+      `UPDATE followups SET status = 'cancelled' WHERE lead_id = $1 AND status = 'pending'`,
+      [leadId]
+    );
+    return updated.rows[0];
+  }
 
-  return createPayment({
+  const payment = await createPayment({
     leadId,
     phone,
     paymentLink,
@@ -130,10 +141,17 @@ async function reportPaymentByUser({ leadId, phone, paymentLink, amount, metadat
       ...metadata,
       reported_by_user: true
     }
-  }).then((payment) => updatePayment(payment.id, {
+  }).then((createdPayment) => updatePayment(createdPayment.id, {
     status: 'reported',
     reported_by_user: true
   }));
+
+  await query(
+    `UPDATE followups SET status = 'cancelled' WHERE lead_id = $1 AND status = 'pending'`,
+    [leadId]
+  );
+
+  return payment;
 }
 
 module.exports = {

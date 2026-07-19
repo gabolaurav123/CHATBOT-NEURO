@@ -43,6 +43,10 @@ PDF_LINK=
 PRODUCT_NORMAL_PRICE=360
 PRODUCT_SPECIAL_PRICE=270
 PRODUCT_PRICE=270
+HOLOGRAFICAS_PRODUCT_NAME=Holográficas / Gimnasio del Cerebro
+HOLOGRAFICAS_PRICE=72
+HOLOGRAFICAS_VIDEO_LINK=https://youtu.be/btHy8kSC4E4
+HOLOGRAFICAS_HOTMART_LINK=https://pay.hotmart.com/W101807995K
 WHATSAPP_SESSION_PATH=.baileys_auth
 PORT=80
 NODE_ENV=production
@@ -72,3 +76,5 @@ GET /api/health
 ```
 
 Este endpoint muestra estado basico sin exponer secretos. Si agregas `x-admin-api-key`, tambien devuelve el estado administrativo completo de WhatsApp.
+
+Comprueba que `config.holograficasPromptVersion` sea `HOLOGRAFICAS_PROMPT_VERSION=add-holograficas-keep-neurotraumas-v1`. La selección guarda `selected_plan`; el CRM separa Holográficas con `crm_section=holografica` y Neurotraumas con `crm_section=neurotraumas`.

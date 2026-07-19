@@ -9,7 +9,8 @@ const whatsappService = require('../services/whatsappService');
 const { logAdminAction } = require('../services/crmService');
 const { isUuid, textMessageSchema } = require('../utils/validators');
 const { hotmartMessage } = require('../bot/flows');
-const { buildPaymentFollowUps } = require('../bot/followUps');
+const { buildPaymentFollowUps, buildHolograficasPaymentFollowUps } = require('../bot/followUps');
+const { PLANS, getPlanResources } = require('../bot/productCatalog');
 
 const router = express.Router();
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/W101807995K';
@@ -172,8 +173,22 @@ router.post('/:id/send-hotmart-link', async (req, res, next) => {
     const id = parseLeadId(req);
     let lead = await getLeadOr404(id);
     const settings = await settingsService.getRuntimeSettings();
-    const hotmartLink = activeHotmartLink(settings);
-    const message = hotmartMessage(lead, hotmartLink, settings);
+    const selectedPlan = lead.selected_plan
+      || (lead.crm_section === 'holografica' ? PLANS.HOLOGRAFICAS : PLANS.NEUROTRAUMAS);
+    const resources = getPlanResources(selectedPlan, settings);
+    const hotmartLink = selectedPlan === PLANS.HOLOGRAFICAS
+      ? resources.hotmartLink
+      : activeHotmartLink(settings);
+    const message = selectedPlan === PLANS.HOLOGRAFICAS
+      ? [
+        `Gracias${lead.name ? `, ${lead.name}` : ''} ❤️`,
+        'Te dejo el acceso oficial por Hotmart:',
+        hotmartLink,
+        '',
+        `La inversión es de USD ${resources.price} y el acceso es de por vida 🌿`,
+        'Cuando completes tu compra, escribime “YA COMPRÉ”.'
+      ].join('\n')
+      : hotmartMessage(lead, hotmartLink, settings);
     const recipient = getRecipientOrThrow(lead);
 
     await whatsappService.sendMessage(recipient, message);
@@ -184,18 +199,29 @@ router.post('/:id/send-hotmart-link', async (req, res, next) => {
       hotmart_link_sent_at: new Date(),
       purchase_intent: true,
       funnel_stage: 'link_pago_enviado',
-      payment_status: 'pendiente'
+      payment_status: 'pendiente',
+      selected_plan: selectedPlan,
+      crm_section: selectedPlan === PLANS.HOLOGRAFICAS ? 'holografica' : 'neurotraumas',
+      source: lead.source || (selectedPlan === PLANS.HOLOGRAFICAS
+        ? 'whatsapp_multi_plan_holograficas'
+        : 'whatsapp_multi_plan')
     });
 
     await paymentService.createPayment({
       leadId: lead.id,
       phone: lead.phone,
       paymentLink: hotmartLink,
-      amount: settings.product_special_price || settings.product_price || 270,
-      metadata: { source: 'crm' }
+      amount: resources.price,
+      metadata: {
+        source: 'crm',
+        selected_plan: selectedPlan,
+        crm_section: lead.crm_section
+      }
     });
 
-    const followUps = buildPaymentFollowUps(lead, hotmartLink);
+    const followUps = selectedPlan === PLANS.HOLOGRAFICAS
+      ? buildHolograficasPaymentFollowUps(hotmartLink)
+      : buildPaymentFollowUps(lead, hotmartLink);
     await followupService.createFollowUps(
       followUps.map((item) => ({
         leadId: lead.id,

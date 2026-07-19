@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS leads (
   email TEXT,
   username TEXT,
   crm_section TEXT DEFAULT 'neurotraumas',
+  country TEXT,
+  selected_plan TEXT,
+  source TEXT,
   source_keyword TEXT,
   main_pain TEXT,
   emotional_response TEXT,
@@ -52,6 +55,9 @@ ALTER TABLE leads ADD COLUMN IF NOT EXISTS whatsapp_lid TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS display_phone TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS crm_section TEXT DEFAULT 'neurotraumas';
 ALTER TABLE leads ALTER COLUMN crm_section SET DEFAULT 'neurotraumas';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS country TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS selected_plan TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS source TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS objection_type TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS video_sent BOOLEAN DEFAULT FALSE;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS video_sent_at TIMESTAMP;
@@ -176,6 +182,7 @@ CREATE INDEX IF NOT EXISTS idx_leads_display_phone ON leads(display_phone);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(lead_status);
 CREATE INDEX IF NOT EXISTS idx_leads_funnel_stage ON leads(funnel_stage);
 CREATE INDEX IF NOT EXISTS idx_leads_crm_section ON leads(crm_section);
+CREATE INDEX IF NOT EXISTS idx_leads_selected_plan ON leads(selected_plan);
 CREATE INDEX IF NOT EXISTS idx_conversations_lead_id ON conversations(lead_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_whatsapp_id ON conversations(whatsapp_id);
 CREATE INDEX IF NOT EXISTS idx_messages_lead_created ON messages(lead_id, created_at DESC);

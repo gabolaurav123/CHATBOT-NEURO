@@ -1,6 +1,6 @@
-# Chatbot Neurotraumas
+# Chatbot Neurotraumas + Holográficas
 
-Backend independiente para un chatbot vendedor de Neurotraumas conectado a WhatsApp por QR, PostgreSQL y OpenAI API. El CRM puede leer leads, conversaciones, mensajes, pagos, follow-ups, settings y controlar el bot desde endpoints protegidos.
+Backend multiproducto para los flujos de Neurotraumas y Holográficas / Gimnasio del Cerebro, conectado a WhatsApp por QR, PostgreSQL y OpenAI API. Cada producto conserva su prompt, recursos comerciales y apartado del CRM. El CRM puede leer leads, conversaciones, mensajes, pagos, follow-ups, settings y controlar el bot desde endpoints protegidos.
 
 ## WhatsApp Sin Chrome
 
@@ -25,6 +25,10 @@ Variables criticas:
 - `PDF_LINK`: link opcional de material PDF. La IA solo lo menciona si existe en configuracion.
 - `PRODUCT_NORMAL_PRICE`: precio normal mostrado al usuario, por defecto `360`.
 - `PRODUCT_SPECIAL_PRICE`: precio especial por este canal, por defecto `270`.
+- `HOLOGRAFICAS_PRODUCT_NAME`: nombre del producto Holográficas.
+- `HOLOGRAFICAS_PRICE`: precio de Holográficas, por defecto `72`.
+- `HOLOGRAFICAS_VIDEO_LINK`: Mini Master Class oficial de Holográficas.
+- `HOLOGRAFICAS_HOTMART_LINK`: acceso oficial de Holográficas en Hotmart.
 - `WHATSAPP_SESSION_PATH`: carpeta local de sesion Baileys, recomendado `.baileys_auth`.
 - `PORT`: puerto HTTP. En Seenode usa `80`.
 
@@ -93,6 +97,10 @@ PDF_LINK=
 PRODUCT_NORMAL_PRICE=360
 PRODUCT_SPECIAL_PRICE=270
 PRODUCT_PRICE=270
+HOLOGRAFICAS_PRODUCT_NAME=Holográficas / Gimnasio del Cerebro
+HOLOGRAFICAS_PRICE=72
+HOLOGRAFICAS_VIDEO_LINK=https://youtu.be/btHy8kSC4E4
+HOLOGRAFICAS_HOTMART_LINK=https://pay.hotmart.com/W101807995K
 WHATSAPP_SESSION_PATH=.baileys_auth
 PORT=80
 NODE_ENV=production
@@ -132,7 +140,7 @@ x-admin-api-key: TU_ADMIN_API_KEY
 
 `GET /api/health` es publico y muestra estado basico sin exponer secretos. Si se envia `x-admin-api-key`, incluye el estado administrativo completo de WhatsApp.
 
-Para confirmar que Seenode esta usando la memoria nueva, revisa `config.promptVersion` en `/api/health`. Debe mostrar `NEURO_PROMPT_VERSION=neurotraumas-marisa-memory-v9-crm-corto-amable`. Esa misma marca tambien viaja en las instrucciones enviadas a OpenAI.
+Para confirmar que Seenode está usando las memorias correctas, revisa `/api/health`. `config.promptVersion` identifica la memoria vigente de Neurotraumas y `config.holograficasPromptVersion` debe mostrar `HOLOGRAFICAS_PROMPT_VERSION=add-holograficas-keep-neurotraumas-v1`.
 
 Endpoints principales:
 
@@ -182,7 +190,7 @@ Este endpoint envia el mensaje con Baileys al `whatsapp_id` del lead. Tambien ac
 - No uses `parseInt` para telefonos, JIDs ni IDs. Todos deben tratarse como `string`.
 - `GET /api/leads/:id`, `GET /api/conversations/:leadId` y `GET /api/messages/:leadId` requieren UUID real. Si no es UUID, el backend responde `400 { "error": "Invalid lead id" }`.
 - Para busqueda textual de conversaciones usa `GET /api/conversations?search=texto`; el backend no compara `uuid = text`.
-- Para mostrar solo el apartado de Neurotraumas, el CRM puede llamar `GET /api/leads?crm_section=neurotraumas`, `GET /api/conversations?crm_section=neurotraumas`, `GET /api/payments?crm_section=neurotraumas` y `GET /api/followups?crm_section=neurotraumas`. Tambien se aceptan los alias `section` y `product`.
+- Para mostrar solo un apartado, el CRM puede filtrar con `crm_section=neurotraumas` o `crm_section=holografica` en leads, conversaciones, pagos y follow-ups. También se aceptan los alias `section` y `product`.
 - Para editar follow-ups usa `PATCH /api/followups/:id` con `message`, `scheduled_at`, `type` y `status`.
 - Para enviar un follow-up ahora usa `POST /api/followups/:id/send-now`; el backend solo marca `sent` despues de que Baileys confirma el envio.
 
@@ -202,7 +210,7 @@ Al iniciar, el servidor ejecuta `src/database/migrations/schema.sql` con `CREATE
 
 `whatsapp_id` es el JID real de Baileys y es el identificador usado para enviar mensajes. `phone` solo se guarda cuando se obtiene un numero real con seguridad, por ejemplo `+59171234567`. Si Baileys entrega un `@lid`, el backend guarda `phone = null`, `whatsapp_lid = ...@lid` y `display_phone = ID WhatsApp: ...`.
 
-El flujo automatico conversa como Marisa usando OpenAI como unico motor conversacional. La IA decide la respuesta, la etapa y acciones como enviar Hotmart, reportar pago, pausar o activar takeover humano. El backend solo guarda estado, mensajes, memoria y ejecuta acciones tecnicas.
+Los contactos nuevos eligen primero entre Neurotraumas y Holográficas. Neurotraumas conserva su memoria e identidad actuales; Holográficas usa su prompt aislado con Priscila. La IA decide la respuesta, la etapa y acciones como enviar Hotmart, reportar pago, pausar o activar takeover humano. El backend valida el plan seleccionado y evita mezclar precios, videos o enlaces.
 
 El video oficial se configura con `VIDEO_LINK`. El flujo primero da una bienvenida con opciones, valida el problema elegido y pregunta si la persona quiere ver como funciona o prefiere explicacion directa. El link de Hotmart se envia despues de pedir datos para CRM, o si la persona no quiere dar datos pero pide el link igual.
 
@@ -229,6 +237,8 @@ El job `scheduledFollowUps` corre cada 5 minutos y envia follow-ups pendientes s
 
 Se crean follow-ups despues de enviar el link de Hotmart.
 
+Holográficas programa únicamente sus seguimientos de 24 y 48 horas. Todos los seguimientos pendientes se cancelan cuando el pago se reporta o confirma.
+
 ## OpenAI API
 
 La integracion esta en:
@@ -236,6 +246,8 @@ La integracion esta en:
 - `src/services/aiService.js`
 - `src/ai/responseGenerator.js`
 - `src/ai/systemPrompt.js`
+- `src/ai/holograficasPrompt.js`
+- `src/ai/holograficasResponseGenerator.js`
 
 OpenAI decide el turno completo: respuesta, siguiente etapa, campos del lead, memoria y acciones. El backend no mezcla plantillas comerciales ni decide textos por etapa.
 

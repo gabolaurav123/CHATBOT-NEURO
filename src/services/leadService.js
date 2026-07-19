@@ -11,6 +11,9 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'whatsapp_lid',
   'display_phone',
   'crm_section',
+  'country',
+  'selected_plan',
+  'source',
   'first_contact_at',
   'last_contact_at',
   'source_keyword',
@@ -70,8 +73,8 @@ function decorateLeadContact(lead) {
 
   return {
     ...lead,
-    section: lead.crm_section,
-    product: lead.crm_section,
+    section: lead.selected_plan || lead.crm_section,
+    product: lead.selected_plan || lead.crm_section,
     phone_is_real: phoneIsReal,
     display_contact: displayContact
   };
@@ -104,7 +107,7 @@ async function upsertLeadByWhatsAppIdentity({ identity, sourceKeyword }) {
       whatsapp_id: identity.whatsapp_id || existing.whatsapp_id,
       whatsapp_lid: identity.whatsapp_lid || existing.whatsapp_lid,
       display_phone: identity.display_phone || existing.display_phone,
-      crm_section: env.CRM_SECTION,
+      crm_section: existing.crm_section || env.CRM_SECTION,
       source_keyword: existing.source_keyword || sourceKeyword || null,
       first_contact_at: existing.first_contact_at || new Date(),
       last_contact_at: new Date(),
@@ -189,6 +192,9 @@ async function listLeads({ limit = 100, offset = 0, status, q, search, crm_secti
       OR name ILIKE $${params.length}
       OR email ILIKE $${params.length}
       OR username ILIKE $${params.length}
+      OR country ILIKE $${params.length}
+      OR selected_plan ILIKE $${params.length}
+      OR source ILIKE $${params.length}
       OR whatsapp_id ILIKE $${params.length}
       OR whatsapp_lid ILIKE $${params.length}
       OR display_phone ILIKE $${params.length}

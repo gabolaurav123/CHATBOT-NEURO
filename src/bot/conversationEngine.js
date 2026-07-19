@@ -5,13 +5,24 @@ const settingsService = require('../services/settingsService');
 const paymentService = require('../services/paymentService');
 const followupService = require('../services/followupService');
 const { generateAIConversationTurn, initialOptionsReply, normalizeStage } = require('../ai/responseGenerator');
+const { generateHolograficasConversationTurn } = require('../ai/holograficasResponseGenerator');
+const { classifySafety } = require('../ai/safetyClassifier');
 const { normalizeUserProvidedPhone } = require('../utils/normalizePhone');
 const { extractEmail, isValidEmail } = require('../utils/validators');
 const { addHours } = require('../utils/date');
 const { logger } = require('../utils/logger');
 const { env } = require('../config/env');
 const { detectInitialKeyword } = require('./intentDetector');
-const { buildPaymentFollowUps } = require('./followUps');
+const { buildPaymentFollowUps, buildHolograficasPaymentFollowUps } = require('./followUps');
+const {
+  PLANS,
+  getPlanResources,
+  holograficasWelcomeReply,
+  normalizeText,
+  planCatalogReply,
+  resolvePlanRoute,
+  planSelectionReply
+} = require('./productCatalog');
 
 const STAGE_ALIASES = {
   video_ofrecido: 'captacion',
@@ -47,6 +58,8 @@ const ALLOWED_AI_LEAD_FIELDS = new Set([
   'source',
   'source_keyword',
   'country',
+  'selected_plan',
+  'crm_section',
   'main_pain',
   'emotional_response',
   'problem_duration',
@@ -90,20 +103,27 @@ function resolveCurrentStage({ lead, conversation, memory }) {
     || (lead && lead.funnel_stage)
     || (conversation && conversation.current_step)
     || 'inicio';
-  const alias = STAGE_ALIASES[raw] || raw;
+  const alias = lead && lead.selected_plan === PLANS.HOLOGRAFICAS && raw === 'video_enviado'
+    ? raw
+    : STAGE_ALIASES[raw] || raw;
   return normalizeStage(alias, 'inicio');
 }
 
-function getHotmartLink(settings = {}) {
+function getHotmartLink(settings = {}, lead = {}) {
+  if (lead.selected_plan === PLANS.HOLOGRAFICAS) {
+    return getPlanResources(PLANS.HOLOGRAFICAS, settings).hotmartLink;
+  }
   const link = String(settings.hotmart_link || env.HOTMART_LINK || '').trim();
   if (!link || link === LEGACY_HOTMART_LINK || HOTMART_PLACEHOLDERS.includes(link)) return HOTMART_PLACEHOLDER;
   return link;
 }
 
-function getAmount(settings = {}) {
-  const raw = settings.product_special_price || settings.product_price || env.PRODUCT_SPECIAL_PRICE || 270;
+function getAmount(settings = {}, lead = {}) {
+  const raw = getPlanResources(lead.selected_plan || PLANS.NEUROTRAUMAS, settings).price;
   const amount = Number(String(raw).replace(/[^\d.]/g, ''));
-  return Number.isFinite(amount) && amount > 0 ? amount : 270;
+  return Number.isFinite(amount) && amount > 0
+    ? amount
+    : (lead.selected_plan === PLANS.HOLOGRAFICAS ? 72 : 270);
 }
 
 function sanitizeLeadFields(aiFields = {}, lead, body) {
@@ -141,15 +161,19 @@ function sanitizeLeadFields(aiFields = {}, lead, body) {
     }
 
     if (key === 'source') {
-      safe.source_keyword = String(value).trim().slice(0, 500);
+      safe.source = String(value).trim().slice(0, 500);
       continue;
     }
 
     if (key === 'country') {
-      safe.notes = [
-        safe.notes || lead.notes,
-        `Country: ${String(value).trim().slice(0, 120)}`
-      ].filter(Boolean).join('\n').slice(0, 2000);
+      safe.country = String(value).trim().slice(0, 120);
+      continue;
+    }
+
+    if (key === 'selected_plan') {
+      if (Object.values(PLANS).includes(value) && (!lead.selected_plan || lead.selected_plan === value)) {
+        safe.selected_plan = value;
+      }
       continue;
     }
 
@@ -195,19 +219,25 @@ async function updateConversationState({ conversation, nextStage }) {
 async function createPaymentFlow({ lead, settings, firstTime }) {
   if (!firstTime) return;
 
-  const link = getHotmartLink(settings);
-  const amount = getAmount(settings);
+  const link = getHotmartLink(settings, lead);
+  const amount = getAmount(settings, lead);
 
   await paymentService.createPayment({
     leadId: lead.id,
     phone: lead.phone,
     paymentLink: link,
     amount,
-    metadata: { source: 'ai_conversation_turn' }
+    metadata: {
+      source: 'ai_conversation_turn',
+      selected_plan: lead.selected_plan,
+      crm_section: lead.crm_section
+    }
   });
 
   await followupService.createFollowUps(
-    buildPaymentFollowUps(lead, link).map((item) => ({
+    (lead.selected_plan === PLANS.HOLOGRAFICAS
+      ? buildHolograficasPaymentFollowUps(link)
+      : buildPaymentFollowUps(lead, link)).map((item) => ({
       ...item,
       leadId: lead.id,
       phone: lead.phone,
@@ -220,9 +250,13 @@ async function reportPayment({ lead, settings }) {
   await paymentService.reportPaymentByUser({
     leadId: lead.id,
     phone: lead.phone,
-    paymentLink: getHotmartLink(settings),
-    amount: getAmount(settings),
-    metadata: { source: 'ai_payment_reported' }
+    paymentLink: getHotmartLink(settings, lead),
+    amount: getAmount(settings, lead),
+    metadata: {
+      source: 'ai_payment_reported',
+      selected_plan: lead.selected_plan,
+      crm_section: lead.crm_section
+    }
   });
 }
 
@@ -237,16 +271,27 @@ async function applyAIDecision({
   const actions = decision.actions || {};
   const firstHotmartSend = Boolean(actions.send_hotmart_link && !lead.hotmart_link_sent);
   const leadFields = sanitizeLeadFields(decision.lead_fields, lead, body);
+  const selectedPlan = leadFields.selected_plan || lead.selected_plan;
+  const resources = getPlanResources(selectedPlan || PLANS.NEUROTRAUMAS, settings);
+
+  if (selectedPlan === PLANS.HOLOGRAFICAS) {
+    leadFields.selected_plan = PLANS.HOLOGRAFICAS;
+    leadFields.crm_section = 'holografica';
+  } else if (selectedPlan === PLANS.NEUROTRAUMAS) {
+    leadFields.selected_plan = PLANS.NEUROTRAUMAS;
+    leadFields.crm_section = 'neurotraumas';
+  }
 
   leadFields.funnel_stage = decision.next_stage;
   leadFields.consent_24h = leadFields.consent_24h === false ? false : true;
   leadFields.memory_expires_at = addHours(new Date(), env.MEMORY_EXPIRATION_HOURS);
 
-  if (actions.send_video_link && settings.video_link) {
+  if (actions.send_video_link && resources.videoLink) {
     leadFields.video_sent = true;
     leadFields.video_sent_at = lead.video_sent_at || new Date();
-    leadFields.funnel_stage = 'diagnostico';
-    decision.next_stage = 'diagnostico';
+    const videoStage = selectedPlan === PLANS.HOLOGRAFICAS ? 'video_enviado' : 'diagnostico';
+    leadFields.funnel_stage = videoStage;
+    decision.next_stage = videoStage;
   }
 
   if (actions.send_pdf_link && settings.pdf_link) {
@@ -263,6 +308,9 @@ async function applyAIDecision({
     leadFields.payment_status = leadFields.payment_status || lead.payment_status || 'pendiente';
     leadFields.funnel_stage = 'link_pago_enviado';
     decision.next_stage = 'link_pago_enviado';
+    if (selectedPlan === PLANS.HOLOGRAFICAS) {
+      leadFields.source = 'whatsapp_multi_plan_holograficas';
+    }
   }
 
   if (actions.payment_reported) {
@@ -270,6 +318,10 @@ async function applyAIDecision({
     leadFields.purchase_intent = true;
     leadFields.funnel_stage = 'pago_reportado';
     decision.next_stage = 'pago_reportado';
+    if (selectedPlan === PLANS.HOLOGRAFICAS) {
+      leadFields.lead_status = 'comprador';
+      leadFields.source = 'whatsapp_multi_plan_holograficas';
+    }
   }
 
   if (actions.stop_contact) {
@@ -380,8 +432,126 @@ function shouldResetStaleSalesState(lead, body) {
   );
 }
 
-function aiUnavailableReply(error) {
+function aiUnavailableReply(error, lead) {
+  if (lead && lead.selected_plan === PLANS.HOLOGRAFICAS) {
+    return 'Perdón, tuve un problema técnico respondiendo. ¿Me repetís tu mensaje, por favor? 🌿';
+  }
+  if (!lead || !lead.selected_plan) return planSelectionReply();
   return initialOptionsReply();
+}
+
+function emptyActions() {
+  return {
+    send_video_link: false,
+    send_pdf_link: false,
+    send_hotmart_link: false,
+    create_payment: false,
+    create_payment_followups: false,
+    payment_reported: false,
+    pause_bot: false,
+    human_takeover: false,
+    delete_memory: false,
+    stop_contact: false
+  };
+}
+
+function planSelectionDecision(body) {
+  const text = normalizeText(body);
+  const hasProblem = /ansiedad|miedo|autosabot|bloque|no avanzo|pensamientos|relacion|dinero|estanc|herida|famil/.test(text);
+  return {
+    reply: planSelectionReply({ hasProblem }),
+    next_stage: 'seleccion_plan',
+    lead_fields: { source: 'whatsapp_multi_plan' },
+    memory_patch: {
+      awaiting_plan_selection: true,
+      source: 'whatsapp_multi_plan'
+    },
+    actions: emptyActions()
+  };
+}
+
+function selectedPlanDecision(selectedPlan) {
+  const holograficas = selectedPlan === PLANS.HOLOGRAFICAS;
+  return {
+    reply: holograficas ? holograficasWelcomeReply() : initialOptionsReply(),
+    next_stage: 'captacion',
+    lead_fields: {
+      selected_plan: selectedPlan,
+      crm_section: holograficas ? 'holografica' : 'neurotraumas',
+      source: 'whatsapp_multi_plan'
+    },
+    memory_patch: {
+      selected_plan: selectedPlan,
+      awaiting_plan_selection: false,
+      source: 'whatsapp_multi_plan'
+    },
+    actions: emptyActions()
+  };
+}
+
+function catalogDecision() {
+  return {
+    reply: planCatalogReply(),
+    next_stage: 'seleccion_plan',
+    lead_fields: { source: 'whatsapp_multi_plan' },
+    memory_patch: {
+      awaiting_plan_selection: true,
+      last_intent: 'catalog_request'
+    },
+    actions: emptyActions()
+  };
+}
+
+function crisisDecision() {
+  return {
+    reply: [
+      'Siento mucho que estés pasando por esto ❤️',
+      'En este momento lo más importante es que no estés sol@.',
+      '',
+      'Por favor buscá ayuda inmediata con una persona de confianza, un profesional de salud o emergencias de tu país.',
+      '',
+      'Estos entrenamientos pueden acompañar procesos personales, pero no reemplazan ayuda profesional en una situación urgente 🌿'
+    ].join('\n'),
+    next_stage: 'crisis',
+    lead_fields: { crisis_detected: true },
+    memory_patch: { crisis_detected: true },
+    actions: {
+      ...emptyActions(),
+      pause_bot: true,
+      human_takeover: true
+    }
+  };
+}
+
+function shouldPreserveLegacyNeurotraumas(lead, history) {
+  if (!lead || lead.selected_plan) return false;
+  return history.length > 1
+    || !['inicio', 'seleccion_plan', null, undefined].includes(lead.funnel_stage)
+    || Boolean(lead.main_pain || lead.video_sent || lead.offer_presented || lead.hotmart_link_sent);
+}
+
+async function resetLeadForPlanSelection(lead, selectedPlan) {
+  await memoryService.deleteMemoryByLeadId(lead.id);
+  await followupService.cancelPendingFollowUpsByLead(lead.id);
+  return leadService.updateLead(lead.id, {
+    selected_plan: selectedPlan,
+    crm_section: selectedPlan === PLANS.HOLOGRAFICAS ? 'holografica' : 'neurotraumas',
+    source: 'whatsapp_multi_plan',
+    funnel_stage: 'captacion',
+    video_sent: false,
+    video_sent_at: null,
+    pdf_sent: false,
+    pdf_sent_at: null,
+    offer_presented: false,
+    offer_presented_at: null,
+    hotmart_link_sent: false,
+    hotmart_link_sent_at: null,
+    purchase_intent: false,
+    closed_conversation: false,
+    payment_status: 'pendiente',
+    main_objection: null,
+    objection_type: null
+  });
 }
 
 async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPayload }) {
@@ -488,6 +658,53 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
   const memory = memoryObject(memoryRow);
   const history = await messageService.getConversationHistory(lead.id, 12);
   const settings = await settingsService.getRuntimeSettings();
+
+  if (classifySafety(body).isCrisis) {
+    const decision = crisisDecision();
+    const updatedLead = await applyAIDecision({ lead, conversation, memory, body, settings, decision });
+    return result({ lead: updatedLead, conversation, reply: decision.reply, whatsappId });
+  }
+
+  const legacyEstablished = shouldPreserveLegacyNeurotraumas(lead, history);
+  const awaitingSelection = Boolean(memory.awaiting_plan_selection)
+    || lead.funnel_stage === 'seleccion_plan'
+    || (!lead.selected_plan && history.length === 1);
+  const planRoute = resolvePlanRoute({
+    message: body,
+    selectedPlan: lead.selected_plan,
+    awaitingSelection,
+    legacyEstablished
+  });
+
+  if (planRoute.type === 'catalog') {
+    const decision = catalogDecision();
+    const updatedLead = await applyAIDecision({ lead, conversation, memory, body, settings, decision });
+    return result({ lead: updatedLead, conversation, reply: decision.reply, whatsappId });
+  }
+
+  if (planRoute.type === 'select') {
+    if (lead.selected_plan || legacyEstablished) {
+      lead = await resetLeadForPlanSelection(lead, planRoute.selectedPlan);
+    }
+    const decision = selectedPlanDecision(planRoute.selectedPlan);
+    const updatedLead = await applyAIDecision({ lead, conversation, memory: {}, body, settings, decision });
+    return result({ lead: updatedLead, conversation, reply: decision.reply, whatsappId });
+  }
+
+  if (planRoute.type === 'legacy_neurotraumas') {
+    lead = await leadService.updateLead(lead.id, {
+      selected_plan: PLANS.NEUROTRAUMAS,
+      crm_section: 'neurotraumas',
+      source: lead.source || 'legacy_neurotraumas'
+    });
+  }
+
+  if (planRoute.type === 'selection') {
+    const decision = planSelectionDecision(body);
+    const updatedLead = await applyAIDecision({ lead, conversation, memory, body, settings, decision });
+    return result({ lead: updatedLead, conversation, reply: decision.reply, whatsappId });
+  }
+
   const currentStage = resolveCurrentStage({ lead, conversation, memory });
 
   console.log('AI conversation context', {
@@ -500,7 +717,10 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
 
   let decision;
   try {
-    decision = await generateAIConversationTurn({
+    const generateTurn = lead.selected_plan === PLANS.HOLOGRAFICAS
+      ? generateHolograficasConversationTurn
+      : generateAIConversationTurn;
+    decision = await generateTurn({
       lead,
       memory,
       history,
@@ -528,7 +748,7 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
     return result({
       lead: updatedLead,
       conversation,
-      reply: aiUnavailableReply(error),
+      reply: aiUnavailableReply(error, lead),
       whatsappId
     });
   }

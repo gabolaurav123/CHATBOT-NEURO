@@ -115,10 +115,10 @@ async function generateBotReply(userMessage, context = '') {
   }
 }
 
-async function generateBotDecision({ prompt, model, maxOutputTokens }) {
+async function generateBotDecision({ prompt, model, maxOutputTokens, instructions = SYSTEM_PROMPT }) {
   return createResponse({
     input: prompt,
-    instructions: SYSTEM_PROMPT,
+    instructions,
     model,
     maxOutputTokens,
     json: true

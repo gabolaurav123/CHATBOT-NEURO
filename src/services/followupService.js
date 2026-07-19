@@ -128,6 +128,8 @@ async function listDueFollowUps() {
        AND f.scheduled_at <= NOW()
        AND COALESCE(l.bot_paused, FALSE) = FALSE
        AND COALESCE(l.human_takeover, FALSE) = FALSE
+       AND COALESCE(l.payment_status, 'pendiente') NOT IN ('reportado', 'confirmado')
+       AND COALESCE(l.lead_status, '') <> 'comprador'
      ORDER BY f.scheduled_at ASC
      LIMIT 50`
   );
@@ -170,6 +172,17 @@ async function markFollowUpSent(id) {
   });
 }
 
+async function cancelPendingFollowUpsByLead(leadId) {
+  if (!isUuid(leadId)) return 0;
+  const result = await query(
+    `UPDATE followups
+     SET status = 'cancelled'
+     WHERE lead_id = $1 AND status = 'pending'`,
+    [leadId]
+  );
+  return result.rowCount;
+}
+
 module.exports = {
   createFollowUp,
   createFollowUps,
@@ -177,5 +190,6 @@ module.exports = {
   listDueFollowUps,
   getFollowUpById,
   updateFollowUp,
-  markFollowUpSent
+  markFollowUpSent,
+  cancelPendingFollowUpsByLead
 };
