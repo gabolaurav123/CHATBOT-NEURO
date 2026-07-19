@@ -189,7 +189,7 @@ function sanitizeLeadFields(aiFields = {}, lead, body) {
   if (emailFromText && !lead.email) safe.email = emailFromText;
 
   const phone = normalizeUserProvidedPhone(body);
-  if (phone && !lead.phone) {
+  if (phone && !lead.phone && !safe.phone) {
     safe.phone = phone;
     safe.display_phone = phone;
   }

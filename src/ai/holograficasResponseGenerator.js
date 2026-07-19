@@ -170,6 +170,20 @@ function invalidDecisionReason(decision, context) {
   if (decision.actions.send_pdf_link) return 'Holográficas no ofrece un PDF en este flujo.';
 
   const resources = getPlanResources(PLANS.HOLOGRAFICAS, context.settings);
+  const mentionedPrices = [...decision.reply.matchAll(/USD\s*([0-9]+(?:[.,][0-9]+)?)/gi)]
+    .map((match) => Number(match[1].replace(',', '.')));
+  if (mentionedPrices.some((price) => price !== resources.price)) {
+    return `Usa únicamente el precio oficial de USD ${resources.price}.`;
+  }
+
+  const commercialLinks = (decision.reply.match(/https?:\/\/[^\s)\]]+/gi) || [])
+    .map((link) => link.replace(/[.,!?]+$/, ''));
+  const invalidLink = commercialLinks.find((link) => (
+    (/pay\.hotmart\.com/i.test(link) && link !== resources.hotmartLink)
+    || (/(?:youtu\.be|youtube\.com|drive\.google\.com)/i.test(link) && link !== resources.videoLink)
+  ));
+  if (invalidLink) return 'Usa únicamente los enlaces oficiales de Holográficas.';
+
   if (decision.actions.send_video_link && !decision.reply.includes(resources.videoLink)) {
     return 'Incluye el video oficial exacto cuando send_video_link=true.';
   }

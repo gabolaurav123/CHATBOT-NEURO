@@ -31,6 +31,20 @@ test('rechaza cualquier mezcla comercial con Neurotraumas', () => {
   assert.match(reason, /No mezcles/);
 });
 
+test('rechaza precios y enlaces inventados para Holográficas', () => {
+  const wrongPrice = invalidDecisionReason({
+    reply: 'La inversión es de USD 99.',
+    actions: {}
+  }, context);
+  const wrongLink = invalidDecisionReason({
+    reply: 'Entrá desde https://pay.hotmart.com/OTROPRODUCTO',
+    actions: {}
+  }, context);
+
+  assert.match(wrongPrice, /precio oficial/);
+  assert.match(wrongLink, /enlaces oficiales/);
+});
+
 test('exige recursos oficiales cuando activa acciones de enlace', () => {
   const videoReason = invalidDecisionReason({
     reply: 'Te paso el video.',
