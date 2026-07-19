@@ -47,8 +47,7 @@ test('las consultas de la captura muestran el catálogo aunque el lead sea antig
   ]) {
     assert.deepEqual(resolvePlanRoute({
       message,
-      selectedPlan: 'neurotraumas',
-      legacyEstablished: true
+      selectedPlan: 'neurotraumas'
     }), { type: 'catalog' });
   }
 
@@ -56,6 +55,28 @@ test('las consultas de la captura muestran el catálogo aunque el lead sea antig
   assert.match(reply, /1️⃣ Neurotraumas/);
   assert.match(reply, /2️⃣ Holográficas \/ Gimnasio del Cerebro/);
   assert.doesNotMatch(reply, /solo (trabajamos|tenemos) con Neurotraumas/i);
+});
+
+test('el primer mensaje siempre muestra opciones si no nombra un curso', () => {
+  for (const message of ['hola', 'info', 'tengo ansiedad', 'quiero empezar', '2']) {
+    assert.deepEqual(resolvePlanRoute({
+      message,
+      selectedPlan: null,
+      awaitingSelection: false
+    }), { type: 'selection' });
+  }
+});
+
+test('el primer mensaje entra directo solo si nombra claramente el curso', () => {
+  assert.equal(resolvePlanRoute({
+    message: 'Quiero Neurotraumas',
+    selectedPlan: null
+  }).selectedPlan, PLANS.NEUROTRAUMAS);
+
+  assert.equal(resolvePlanRoute({
+    message: 'Me interesa Holográficas',
+    selectedPlan: null
+  }).selectedPlan, PLANS.HOLOGRAFICAS);
 });
 
 test('permite elegir Holográficas después de abrir el catálogo', () => {

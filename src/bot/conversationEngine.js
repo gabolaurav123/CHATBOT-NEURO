@@ -523,8 +523,8 @@ function crisisDecision() {
   };
 }
 
-function shouldPreserveLegacyNeurotraumas(lead, history) {
-  if (!lead || lead.selected_plan) return false;
+function hasExistingPlanState(lead, history) {
+  if (!lead) return false;
   return history.length > 1
     || !['inicio', 'seleccion_plan', null, undefined].includes(lead.funnel_stage)
     || Boolean(lead.main_pain || lead.video_sent || lead.offer_presented || lead.hotmart_link_sent);
@@ -665,15 +665,12 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
     return result({ lead: updatedLead, conversation, reply: decision.reply, whatsappId });
   }
 
-  const legacyEstablished = shouldPreserveLegacyNeurotraumas(lead, history);
   const awaitingSelection = Boolean(memory.awaiting_plan_selection)
-    || lead.funnel_stage === 'seleccion_plan'
-    || (!lead.selected_plan && history.length === 1);
+    || lead.funnel_stage === 'seleccion_plan';
   const planRoute = resolvePlanRoute({
     message: body,
     selectedPlan: lead.selected_plan,
-    awaitingSelection,
-    legacyEstablished
+    awaitingSelection
   });
 
   if (planRoute.type === 'catalog') {
@@ -683,20 +680,12 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
   }
 
   if (planRoute.type === 'select') {
-    if (lead.selected_plan || legacyEstablished) {
+    if (lead.selected_plan || hasExistingPlanState(lead, history)) {
       lead = await resetLeadForPlanSelection(lead, planRoute.selectedPlan);
     }
     const decision = selectedPlanDecision(planRoute.selectedPlan);
     const updatedLead = await applyAIDecision({ lead, conversation, memory: {}, body, settings, decision });
     return result({ lead: updatedLead, conversation, reply: decision.reply, whatsappId });
-  }
-
-  if (planRoute.type === 'legacy_neurotraumas') {
-    lead = await leadService.updateLead(lead.id, {
-      selected_plan: PLANS.NEUROTRAUMAS,
-      crm_section: 'neurotraumas',
-      source: lead.source || 'legacy_neurotraumas'
-    });
   }
 
   if (planRoute.type === 'selection') {

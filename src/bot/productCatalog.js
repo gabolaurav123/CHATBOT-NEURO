@@ -42,7 +42,7 @@ function detectCatalogIntent(message) {
     || /\b(diferencia|comparar|comparacion)\b.*\b(neuro|holograficas|planes|cursos)\b/.test(text);
 }
 
-function resolvePlanRoute({ message, selectedPlan, awaitingSelection = false, legacyEstablished = false } = {}) {
+function resolvePlanRoute({ message, selectedPlan, awaitingSelection = false } = {}) {
   if (detectCatalogIntent(message)) return { type: 'catalog' };
 
   const requestedPlan = detectSelectedPlan(message, { awaitingSelection });
@@ -52,10 +52,6 @@ function resolvePlanRoute({ message, selectedPlan, awaitingSelection = false, le
       selectedPlan: requestedPlan,
       switched: Boolean(selectedPlan && requestedPlan !== selectedPlan)
     };
-  }
-
-  if (!selectedPlan && legacyEstablished) {
-    return { type: 'legacy_neurotraumas' };
   }
 
   if (!selectedPlan) return { type: 'selection' };
