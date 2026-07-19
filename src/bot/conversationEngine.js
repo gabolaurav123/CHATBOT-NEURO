@@ -15,6 +15,11 @@ const { env } = require('../config/env');
 const { detectInitialKeyword } = require('./intentDetector');
 const { buildPaymentFollowUps, buildHolograficasPaymentFollowUps } = require('./followUps');
 const {
+  buildOptInResetFields,
+  isRestartMessage,
+  shouldResumeOptedOutLead
+} = require('./conversationControl');
+const {
   PLANS,
   getPlanResources,
   holograficasWelcomeReply,
@@ -409,11 +414,6 @@ function isRecoverableBotControl(lead) {
   );
 }
 
-function isRestartMessage(body) {
-  return /^(hola|buenas|buenos dias|buenas tardes|buenas noches|gimnasio|cerebro|gimnasio del cerebro|info|ayuda|inicio|empezar|reiniciar)$/i
-    .test(String(body || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim());
-}
-
 function shouldResetStaleSalesState(lead, body) {
   return Boolean(
     isRestartMessage(body)
@@ -584,6 +584,20 @@ async function handleIncomingMessage({ whatsappId, phone, identity, body, rawPay
       phone: userProvidedPhone,
       display_phone: userProvidedPhone
     });
+  }
+
+  if (shouldResumeOptedOutLead(lead, body)) {
+    console.log('User reactivated contact after opt-out', {
+      leadId: lead.id,
+      whatsapp_id: lead.whatsapp_id
+    });
+    await memoryService.deleteMemoryByLeadId(lead.id);
+    await followupService.cancelPendingFollowUpsByLead(lead.id);
+    lead = await leadService.updateLead(lead.id, buildOptInResetFields(
+      lead,
+      addHours(new Date(), env.MEMORY_EXPIRATION_HOURS)
+    ));
+    await updateConversationState({ conversation, nextStage: 'inicio' });
   }
 
   if (isRecoverableBotControl(lead)) {

@@ -11,6 +11,9 @@ const { isUuid, textMessageSchema } = require('../utils/validators');
 const { hotmartMessage } = require('../bot/flows');
 const { buildPaymentFollowUps, buildHolograficasPaymentFollowUps } = require('../bot/followUps');
 const { PLANS, getPlanResources } = require('../bot/productCatalog');
+const { buildOptInResetFields, isOptedOutLead } = require('../bot/conversationControl');
+const { addHours } = require('../utils/date');
+const { env } = require('../config/env');
 
 const router = express.Router();
 const LEGACY_HOTMART_LINK = 'https://pay.hotmart.com/W101807995K';
@@ -120,7 +123,15 @@ router.post('/:id/pause-bot', async (req, res, next) => {
 router.post('/:id/resume-bot', async (req, res, next) => {
   try {
     const id = parseLeadId(req);
-    const lead = await leadService.updateLead(id, { bot_paused: false });
+    const current = await getLeadOr404(id);
+    const resetOptOut = isOptedOutLead(current);
+    if (resetOptOut) {
+      await memoryService.deleteMemoryByLeadId(id);
+      await followupService.cancelPendingFollowUpsByLead(id);
+    }
+    const lead = await leadService.updateLead(id, resetOptOut
+      ? buildOptInResetFields(current, addHours(new Date(), env.MEMORY_EXPIRATION_HOURS))
+      : { bot_paused: false });
     await logAdminAction({ leadId: id, action: 'bot_resumed' });
     res.json(lead);
   } catch (error) {
