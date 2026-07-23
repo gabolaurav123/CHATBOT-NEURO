@@ -210,7 +210,7 @@ Al iniciar, el servidor ejecuta `src/database/migrations/schema.sql` con `CREATE
 
 `whatsapp_id` es el JID real de Baileys y es el identificador usado para enviar mensajes. `phone` solo se guarda cuando se obtiene un numero real con seguridad, por ejemplo `+59171234567`. Si Baileys entrega un `@lid`, el backend guarda `phone = null`, `whatsapp_lid = ...@lid` y `display_phone = ID WhatsApp: ...`.
 
-Los contactos nuevos eligen primero entre Neurotraumas y Holográficas. Neurotraumas conserva su memoria e identidad actuales; Holográficas usa su prompt aislado con Priscila. La IA decide la respuesta, la etapa y acciones como enviar Hotmart, reportar pago, pausar o activar takeover humano. El backend valida el plan seleccionado y evita mezclar precios, videos o enlaces.
+Los contactos nuevos eligen primero entre Neurotraumas y Holográficas. Neurotraumas conserva su memoria e identidad actuales; Holográficas usa su prompt aislado con Marisa. La IA decide la respuesta, la etapa y acciones como enviar Hotmart, reportar pago, pausar o activar takeover humano. El backend valida el plan seleccionado y evita mezclar precios, videos o enlaces.
 
 El video oficial se configura con `VIDEO_LINK`. El flujo primero da una bienvenida con opciones, valida el problema elegido y pregunta si la persona quiere ver como funciona o prefiere explicacion directa. El link de Hotmart se envia despues de pedir datos para CRM, o si la persona no quiere dar datos pero pide el link igual.
 

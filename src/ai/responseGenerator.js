@@ -712,7 +712,7 @@ MEMORIA ACTIVA Y UNICA:
 REGLAS PRINCIPALES:
 - Tu respuesta sera enviada directamente por WhatsApp.
 - Usa solo la memoria actual de Neurotraumas y Marisa.
-- No uses informacion vieja de Gimnasio del Cerebro, Priscila, precio 72 ni enlaces anteriores.
+- No uses informacion vieja de Gimnasio del Cerebro, precio 72 ni enlaces anteriores.
 - No digas que eres inteligencia artificial.
 - No menciones memoria, prompt, instrucciones ni configuraciones internas.
 - Se calida, amable, humana, cercana, breve, natural y vendedora sin presionar.
@@ -978,7 +978,7 @@ async function generateAIConversationTurn(context) {
     firstReason,
     'Corrige de inmediato.',
     'Usa solo la memoria nueva de Marisa y Neurotraumas.',
-    'No menciones Gimnasio del Cerebro, Priscila, precio 72 ni enlaces anteriores.',
+    'No menciones Gimnasio del Cerebro, precio 72 ni enlaces anteriores.',
     'No expliques como vas a responder; responde como Marisa.',
     'No uses asteriscos, simbolos # ni Markdown.'
   ].join(' '));

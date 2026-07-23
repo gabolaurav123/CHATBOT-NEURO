@@ -32,11 +32,11 @@ test('mantiene recursos comerciales aislados', () => {
   assert.equal(holograficas.price, 72);
 });
 
-test('los mensajes deterministas presentan primero el selector y luego a Priscila', () => {
+test('los mensajes deterministas presentan primero el selector y luego a Marisa', () => {
   assert.match(planSelectionReply(), /1️⃣ Neurotraumas/);
   assert.match(planSelectionReply(), /2️⃣ Holográficas/);
-  assert.doesNotMatch(planSelectionReply(), /Marisa|Priscila/);
-  assert.match(holograficasWelcomeReply(), /Soy Priscila/);
+  assert.doesNotMatch(planSelectionReply(), /Marisa/);
+  assert.match(holograficasWelcomeReply(), /Soy Marisa/);
   assert.match(holograficasWelcomeReply(), /6️⃣ Cargas familiares/);
 });
 

@@ -100,7 +100,7 @@ function planCatalogReply() {
 function holograficasWelcomeReply() {
   return [
     'Perfecto ❤️',
-    'Soy Priscila, del Gimnasio del Cerebro 🌿🧠',
+    'Soy Marisa, del Gimnasio del Cerebro 🌿🧠',
     '',
     'Este entrenamiento es para personas que sienten que algo se repite en su vida y quieren empezar a trabajarlo desde la raíz.',
     '',
@@ -121,7 +121,7 @@ function getPlanResources(selectedPlan, settings = {}) {
   if (selectedPlan === PLANS.HOLOGRAFICAS) {
     return {
       productName: settings.holograficas_product_name || env.HOLOGRAFICAS_PRODUCT_NAME,
-      assistantName: 'Priscila',
+      assistantName: 'Marisa',
       price: Number(settings.holograficas_price || env.HOLOGRAFICAS_PRICE || 72),
       videoLink: settings.holograficas_video_link || env.HOLOGRAFICAS_VIDEO_LINK,
       hotmartLink: settings.holograficas_hotmart_link || env.HOLOGRAFICAS_HOTMART_LINK
